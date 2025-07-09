@@ -6,6 +6,7 @@ services:
     platform: linux/amd64
     ports:
       - "80:80"
+      - "5672:5672"
   api:
     build:
       context: ./api
@@ -27,6 +28,8 @@ services:
       context: ./rabbitmq
     container_name: identity-rabbitmq
     platform: linux/amd64
+    volumes:
+     - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     expose:
       - "5672:5672"
       - "15672:15672"
