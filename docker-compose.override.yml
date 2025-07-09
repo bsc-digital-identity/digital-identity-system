@@ -1,1 +1,25 @@
 
+services:
+  rev-proxy:
+    volumes:
+      - ./rev-proxy:/app
+    environment:
+      - ENV=local
+
+  api:
+    volumes:
+      - ./api:/app
+    environment:
+      - ENV=local
+      - DEBUG=true
+
+  blockchain-client:
+    volumes:
+      - ./blockchain-client:/app
+    environment:
+      - ENV=local
+
+  rabbitmq:
+    environment:
+      - RABBITMQ_DEFAULT_USER=localuser
+      - RABBITMQ_DEFAULT_PASS=localpass

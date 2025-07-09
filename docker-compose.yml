@@ -1,1 +1,33 @@
+services:
+  rev-proxy:
+    build:
+      context: ./rev-proxy
+    container_name: identity-reverse-proxy
+    platform: linux/amd64
+    ports:
+      - "80:80"
+  api:
+    build:
+      context: ./api
+    container_name: identity-api
+    platform: linux/amd64
+    expose:
+      - "8080:8080"
 
+  blockchain-client:
+    build:
+      context: ./blockchain-client
+    container_name: identity-blockchain-client
+    platform: linux/amd64
+    expose:
+      - "8001:8001"
+
+  rabbitmq:
+    build:
+      context: ./rabbitmq
+    container_name: identity-rabbitmq
+    platform: linux/amd64
+    expose:
+      - "5672:5672"
+      - "15672:15672"
+    

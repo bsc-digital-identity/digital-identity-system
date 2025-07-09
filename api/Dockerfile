@@ -1,4 +1,4 @@
-FROM golang:1.24.4-alpine as base
+FROM golang:1.24.5-alpine as builder
 
 WORKDIR /app
 
@@ -10,6 +10,12 @@ COPY . .
 
 RUN go build -o api
 
-EXPOSE 8001
+FROM alpine
 
-CMD ["./build/api"]
+WORKDIR /root/
+
+COPY --from=builder /app ./app
+
+EXPOSE 8080
+
+CMD ["./app/api"]
