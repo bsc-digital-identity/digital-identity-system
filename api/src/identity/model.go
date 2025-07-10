@@ -1,4 +1,4 @@
-package database
+package identity
 
 type SuperIdentity struct {
 	Id           int    `gorm:"primaryKey;autoIncrement"`
