@@ -1,8 +1,12 @@
 import pika
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', port=5672))
+connection = pika.BlockingConnection(
+    pika.ConnectionParameters(
+        host='localhost',
+        port=5672,
+        credentials=pika.PlainCredentials('guest', 'guest')))
+
 channel = connection.channel()
-channel.queue_declare(queue='test')
-channel.basic_publish(exchange='', routing_key='test', body='Hello World!')
+channel.basic_publish(exchange='verifiers', routing_key='verified', body='Hello World!')
 print("Message sent")
 connection.close()
