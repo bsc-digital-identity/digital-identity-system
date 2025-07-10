@@ -16,8 +16,8 @@ func ConnectToDatabase(connectionString string) *gorm.DB {
 		return nil
 	}
 
-	log.Println("Running migrations for SuperIdentity table")
-	err = db.AutoMigrate(&SuperIdentity{})
+	log.Println("Running migrations tables")
+	err = db.AutoMigrate(&SuperIdentity{}, &Attribute{}, &ZKPProof{})
 	if err != nil {
 		log.Fatal("Migrating database failed")
 	}

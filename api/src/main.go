@@ -1,11 +1,12 @@
 package main
 
 import (
-	"api/src/database"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	"api/src/database"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -13,21 +14,28 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// Get DB connection string, default to ./DigitalIdentity.db
 	dbConnectionString := os.Getenv("DB_CONNECTION_STRING")
-	database.ConnectToDatabase(dbConnectionString)
-	/*
-		id := uuid.New()
-		adminIdentity := db.SuperIdentity{
-			IdentityId:   id.String(),
-			IdentityName: "admin",
-		}
-		rowId := database.Create(&adminIdentity)
-		log.Printf("Created admin with %d Id", rowId)
+	if dbConnectionString == "" {
+		dbConnectionString = "./DigitalIdentity.db"
+	}
 
-		var suId db.SuperIdentity
-		result := database.First(&suId, "identity_name = ?", "admin")
-		log.Println(suId, result.Error)
-	*/
+	// Connect to database (using your database package with GORM)
+	db := database.ConnectToDatabase(dbConnectionString)
+	if db == nil {
+		log.Fatal("Database connection failed")
+	}
+
+	// Example: Insert admin if not exists
+	admin := database.SuperIdentity{
+		IdentityId:   "admin-guid-here",
+		IdentityName: "admin",
+	}
+	result := db.FirstOrCreate(&admin, database.SuperIdentity{IdentityName: "admin"})
+	if result.Error != nil {
+		log.Printf("Error inserting admin: %v", result.Error)
+	}
+
 	http.HandleFunc("/", handler)
 	fmt.Println("server running at 0.0.0.0:8080")
 	log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
