@@ -1,6 +1,7 @@
 package main
 
 import (
+	"api/src/identity"
 	"fmt"
 	"log"
 	"net/http"
@@ -27,11 +28,11 @@ func main() {
 	}
 
 	// Example: Insert admin if not exists
-	admin := database.SuperIdentity{
+	admin := identity.SuperIdentity{
 		IdentityId:   "admin-guid-here",
 		IdentityName: "admin",
 	}
-	result := db.FirstOrCreate(&admin, database.SuperIdentity{IdentityName: "admin"})
+	result := db.FirstOrCreate(&admin, identity.SuperIdentity{IdentityName: "admin"})
 	if result.Error != nil {
 		log.Printf("Error inserting admin: %v", result.Error)
 	}
