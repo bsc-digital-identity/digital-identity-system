@@ -19,7 +19,7 @@ services:
     working_dir: /root/app
     environment:
       - DB_CONNECTION_STRING=DigitalIdentity.db
-    expose:
+    ports:
       - "8080:8080"
 
   blockchain-client:
