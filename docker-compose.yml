@@ -7,11 +7,15 @@ services:
     ports:
       - "80:80"
       - "5672:5672"
+
   api:
     build:
       context: ./api
     container_name: identity-api
     platform: linux/amd64
+    working_dir: /root/app
+    environment:
+      - DB_CONNECTION_STRING=DigitalIdentity.db
     expose:
       - "8080:8080"
 
@@ -29,8 +33,7 @@ services:
     container_name: identity-rabbitmq
     platform: linux/amd64
     volumes:
-     - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     expose:
       - "5672:5672"
       - "15672:15672"
-    

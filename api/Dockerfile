@@ -6,16 +6,20 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY . .
+COPY /src ./src
 
-RUN go build -o api
+RUN go build -o api ./src
 
-FROM alpine
+FROM debian:bookworm-slim
 
 WORKDIR /root/
 
 COPY --from=builder /app ./app
 
+COPY sqlite/DigitalIdentity.db ./app
+
+WORKDIR /root/app
+
 EXPOSE 8080
 
-CMD ["./app/api"]
+CMD ["./api"]
