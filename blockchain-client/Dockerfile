@@ -6,9 +6,9 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY . .
+COPY /src ./src
 
-RUN go build -o blockchain-client
+RUN go build -o blockchain-client ./src
 
 FROM alpine
 
@@ -16,6 +16,8 @@ WORKDIR /root/
 
 COPY --from=builder /app ./app
 
+WORKDIR /root/app
+
 EXPOSE 8001
 
-CMD ["./app/blockchain-client"]
+CMD ["./blockchain-client"]

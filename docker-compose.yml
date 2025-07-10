@@ -7,6 +7,9 @@ services:
     ports:
       - "80:80"
       - "5672:5672"
+    depends_on:
+      - api
+      - rabbitmq
 
   api:
     build:
@@ -26,6 +29,8 @@ services:
     platform: linux/amd64
     expose:
       - "8001:8001"
+    depends_on:
+      - rev-proxy
 
   rabbitmq:
     build:
