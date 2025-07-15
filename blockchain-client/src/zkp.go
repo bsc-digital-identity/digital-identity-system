@@ -1,71 +1,87 @@
 package main
 
 import (
+	"time"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 )
 
-type VerifiedIdentity struct {
-	Components []IdentityComponent
-}
-
-type IdentityComponent struct {
-	Key   string
-	Type  string
-	Value any
-}
-
 type IdentityCircuit struct {
-	Inputs map[string]frontend.Variable
-	Schema []FieldConstraint
+	AgeDay      frontend.Variable `gnark:",secret"`
+	AgeMonth    frontend.Variable `gnark:",secret"`
+	AgeYear     frontend.Variable `gnark:",secret"`
+	CurrentYear frontend.Variable `gnark:",public"`
 }
 
-type FieldConstraint struct {
-	Key        string
-	Type       string
-	Constraint string
-	Value      interface{}
+type ZkpResult struct {
+	Proof         groth16.Proof
+	VerifyingKey  groth16.VerifyingKey
+	PublicWitness witness.Witness
 }
 
 func (circuit *IdentityCircuit) Define(api frontend.API) error {
-	for _, schema := range circuit.Schema {
-		value := circuit.Inputs[schema.Key]
+	currentTime := time.Now()
+	currentYear := frontend.Variable(currentTime.Year())
 
-		var err error
-		switch schema.Type {
-		case "int":
-			err = ValidateCircuitValue(value, schema, api)
-		case "float":
-			err = ValidateCircuitValue(value, schema, api)
-		case "string":
-			err = ValidateCircuitValue(value, schema, api)
-		}
+	minValidYear := api.Sub(currentYear, 18)
+	api.AssertIsLessOrEqual(circuit.AgeYear, minValidYear)
 
-		if err != nil {
-			return err
-		}
-	}
+	currentMonth := frontend.Variable(int(currentTime.Month()))
+	api.AssertIsLessOrEqual(circuit.AgeMonth, currentMonth)
+
+	currentDay := frontend.Variable(currentTime.Day())
+	api.AssertIsLessOrEqual(circuit.AgeDay, currentDay)
+
+	api.AssertIsLessOrEqual(1, circuit.AgeDay)
+	api.AssertIsLessOrEqual(circuit.AgeDay, 31)
+	api.AssertIsLessOrEqual(1, circuit.AgeMonth)
+	api.AssertIsLessOrEqual(circuit.AgeMonth, 12)
 
 	return nil
 }
 
-func ValidateCircuitValue[T comparable](value T, schema FieldConstraint, api frontend.API) error {
-	switch schema.Type {
-	case "le":
-		api.AssertIsLessOrEqual(value, api.Compiler().ConstantValue(schema.Value.(T)))
-	case "eq":
-		api.AssertIsEqual(value, schema.Value.(T))
-	case "not":
-		api.AssertIsDifferent(value, schema.Value.(T))
+func CreateZKP(birthDay, birthMonth, birthYear int) (*ZkpResult, error) {
+	var circuit IdentityCircuit
+
+	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, &circuit)
+	if err != nil {
+		return nil, err
 	}
-	return nil
-}
 
-func CreateZKP(circuit *IdentityCircuit) {
-	ccs, _ := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, circuit)
+	pk, vk, err := groth16.Setup(ccs)
+	if err != nil {
+		return nil, err
+	}
 
-	pk, vk, _ := groth16.Setup(ccs)
+	assignment := IdentityCircuit{
+		AgeDay:      birthDay,
+		AgeMonth:    birthMonth,
+		AgeYear:     birthYear,
+		CurrentYear: time.Now().Year(),
+	}
 
+	fullWitness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
+	if err != nil {
+		return nil, err
+	}
+
+	proof, err := groth16.Prove(ccs, pk, fullWitness)
+	if err != nil {
+		return nil, err
+	}
+
+	publicWitness, err := fullWitness.Public()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ZkpResult{
+		Proof:         proof,
+		VerifyingKey:  vk,
+		PublicWitness: publicWitness,
+	}, nil
 }
