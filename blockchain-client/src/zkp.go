@@ -11,10 +11,9 @@ import (
 )
 
 type IdentityCircuit struct {
-	AgeDay      frontend.Variable `gnark:",secret"`
-	AgeMonth    frontend.Variable `gnark:",secret"`
-	AgeYear     frontend.Variable `gnark:",secret"`
-	CurrentYear frontend.Variable `gnark:",public"`
+	AgeDay   frontend.Variable `gnark:",secret"`
+	AgeMonth frontend.Variable `gnark:",secret"`
+	AgeYear  frontend.Variable `gnark:",secret"`
 }
 
 type ZkpResult struct {
@@ -58,10 +57,9 @@ func CreateZKP(birthDay, birthMonth, birthYear int) (*ZkpResult, error) {
 	}
 
 	assignment := IdentityCircuit{
-		AgeDay:      birthDay,
-		AgeMonth:    birthMonth,
-		AgeYear:     birthYear,
-		CurrentYear: time.Now().Year(),
+		AgeDay:   birthDay,
+		AgeMonth: birthMonth,
+		AgeYear:  birthYear,
 	}
 
 	fullWitness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
