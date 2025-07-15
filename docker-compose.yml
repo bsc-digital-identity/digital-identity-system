@@ -3,7 +3,6 @@ services:
     build:
       context: ./rev-proxy
     container_name: identity-reverse-proxy
-    platform: linux/amd64
     ports:
       - "9000:80"
       - "5672:5672"
@@ -15,7 +14,6 @@ services:
     build:
       context: ./api
     container_name: identity-api
-    platform: linux/amd64
     working_dir: /root/app
     environment:
       - DB_CONNECTION_STRING=DigitalIdentity.db
@@ -26,7 +24,6 @@ services:
     build:
       context: ./blockchain-client
     container_name: identity-blockchain-client
-    platform: linux/amd64
     expose:
       - "8001:8001"
     depends_on:
@@ -36,10 +33,6 @@ services:
     build:
       context: ./rabbitmq
     container_name: identity-rabbitmq
-    platform: linux/amd64
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
     volumes:
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     expose:
