@@ -5,7 +5,7 @@ services:
     container_name: identity-reverse-proxy
     platform: linux/amd64
     ports:
-      - "80:80"
+      - "9000:80"
       - "5672:5672"
     depends_on:
       - api
@@ -37,6 +37,9 @@ services:
       context: ./rabbitmq
     container_name: identity-rabbitmq
     platform: linux/amd64
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
     volumes:
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     expose:
