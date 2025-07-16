@@ -2,11 +2,19 @@ package queues
 
 import (
 	"blockchain-client/src/utils"
+	"blockchain-client/src/zkp"
+	"encoding/json"
 	"log"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+type ZkpVerifiedMessage struct {
+	BirthDay   int `json:"birth_day"`
+	BirthMonth int `json:"birth_month"`
+	BirthYear  int `json:"birth_year"`
+}
 
 func HandleIncomingMessages(ch *amqp.Channel, queueName, consumerTag string) {
 	defer func() {
@@ -34,6 +42,22 @@ func HandleIncomingMessages(ch *amqp.Channel, queueName, consumerTag string) {
 		defer waitGroup.Done()
 		for d := range msgs {
 			log.Printf("[%s] %s", queueName, d.Body)
+
+			var msg ZkpVerifiedMessage
+			err := json.Unmarshal(d.Body, &msg)
+
+			if err != nil {
+				log.Printf("Failed to unmarshal message: %s", err)
+				continue
+			}
+
+			zkpResult, err := zkp.CreateZKP(msg.BirthDay, msg.BirthMonth, msg.BirthYear)
+			if err != nil {
+				log.Printf("Failed to create ZKP: %s", err)
+				continue
+			}
+
+			log.Println(zkpResult)
 		}
 	}()
 
