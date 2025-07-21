@@ -10,52 +10,58 @@ import (
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 )
 
+// IdentityCircuit defines the circuit structure
 type IdentityCircuit struct {
 	AgeDay   frontend.Variable `gnark:",secret"`
 	AgeMonth frontend.Variable `gnark:",secret"`
 	AgeYear  frontend.Variable `gnark:",secret"`
 }
 
-type ZkpResult struct {
-	Proof         groth16.Proof
-	VerifyingKey  groth16.VerifyingKey
-	PublicWitness witness.Witness
-}
-
+// Define implements the frontend.Circuit interface
 func (circuit *IdentityCircuit) Define(api frontend.API) error {
 	currentTime := time.Now()
-	currentYear := frontend.Variable(currentTime.Year())
-
+	currentYear := currentTime.Year()
 	minValidYear := api.Sub(currentYear, 18)
 	api.AssertIsLessOrEqual(circuit.AgeYear, minValidYear)
 
-	currentMonth := frontend.Variable(int(currentTime.Month()))
+	currentMonth := int(currentTime.Month())
 	api.AssertIsLessOrEqual(circuit.AgeMonth, currentMonth)
 
-	currentDay := frontend.Variable(currentTime.Day())
+	currentDay := currentTime.Day()
 	api.AssertIsLessOrEqual(circuit.AgeDay, currentDay)
 
 	api.AssertIsLessOrEqual(1, circuit.AgeDay)
 	api.AssertIsLessOrEqual(circuit.AgeDay, 31)
 	api.AssertIsLessOrEqual(1, circuit.AgeMonth)
 	api.AssertIsLessOrEqual(circuit.AgeMonth, 12)
-
 	return nil
 }
 
-func CreateZKP(birthDay, birthMonth, birthYear int) (*ZkpResult, error) {
-	var circuit IdentityCircuit
+type ZkpResult struct {
+	Proof         groth16.Proof
+	VerifyingKey  groth16.VerifyingKey
+	PublicWitness witness.Witness
+	TxHash        string
+}
 
-	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, &circuit)
+func CreateZKP(birthDay, birthMonth, birthYear int) (*ZkpResult, error) {
+	// 1. Compile the circuit (constraint system)
+	ccs, err := frontend.Compile(
+		ecc.BN254.ScalarField(),
+		r1cs.NewBuilder,
+		&IdentityCircuit{},
+	)
 	if err != nil {
 		return nil, err
 	}
 
+	// 2. Setup proving/verifying keys
 	pk, vk, err := groth16.Setup(ccs)
 	if err != nil {
 		return nil, err
 	}
 
+	// 3. Assign inputs
 	assignment := IdentityCircuit{
 		AgeDay:   birthDay,
 		AgeMonth: birthMonth,
@@ -67,11 +73,13 @@ func CreateZKP(birthDay, birthMonth, birthYear int) (*ZkpResult, error) {
 		return nil, err
 	}
 
+	// 4. Create the proof
 	proof, err := groth16.Prove(ccs, pk, fullWitness)
 	if err != nil {
 		return nil, err
 	}
 
+	// 5. Get the public witness
 	publicWitness, err := fullWitness.Public()
 	if err != nil {
 		return nil, err
@@ -81,5 +89,6 @@ func CreateZKP(birthDay, birthMonth, birthYear int) (*ZkpResult, error) {
 		Proof:         proof,
 		VerifyingKey:  vk,
 		PublicWitness: publicWitness,
+		TxHash:        "",
 	}, nil
 }

@@ -5,10 +5,10 @@ services:
     container_name: identity-reverse-proxy
     ports:
       - "9000:80"
-      - "5672:5672"
     depends_on:
       - api
       - rabbitmq
+    restart: unless-stopped
 
   api:
     build:
@@ -17,17 +17,20 @@ services:
     working_dir: /root/app
     environment:
       - DB_CONNECTION_STRING=DigitalIdentity.db
-    expose:
+    ports:
       - "8080:8080"
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
 
   blockchain-client:
     build:
       context: ./blockchain-client
     container_name: identity-blockchain-client
-    expose:
-      - "8001:8001"
     depends_on:
-      - rev-proxy
+      - api
+      - rabbitmq
+    restart: unless-stopped
 
   rabbitmq:
     build:
@@ -35,6 +38,7 @@ services:
     container_name: identity-rabbitmq
     volumes:
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-    expose:
+    ports:
       - "5672:5672"
       - "15672:15672"
+    restart: unless-stopped

@@ -2,7 +2,9 @@ package main
 
 import (
 	"api/src/identity"
+	"api/src/queues"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"os"
@@ -15,17 +17,25 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Get DB connection string, default to ./DigitalIdentity.db
-	dbConnectionString := os.Getenv("DB_CONNECTION_STRING")
-	if dbConnectionString == "" {
-		dbConnectionString = "./DigitalIdentity.db"
+	// Setup DB
+	dbConn := os.Getenv("DB_CONNECTION_STRING")
+	if dbConn == "" {
+		dbConn = "./DigitalIdentity.db"
 	}
-
-	// Connect to database (using your database package with GORM)
-	db := database.ConnectToDatabase(dbConnectionString)
+	db := database.ConnectToDatabase(dbConn)
 	if db == nil {
 		log.Fatal("Database connection failed")
 	}
+
+	// Setup RabbitMQ
+	rabbit, err := queues.NewRabbitPublisher(
+		"amqp://guest:guest@rabbitmq:5672/",
+		"identity", "identity.verified", "identity.verified",
+	)
+	if err != nil {
+		log.Fatalf("RabbitMQ setup error: %v", err)
+	}
+	defer rabbit.Close()
 
 	// Example: Insert admin if not exists
 	admin := identity.SuperIdentity{
@@ -37,7 +47,16 @@ func main() {
 		log.Printf("Error inserting admin: %v", result.Error)
 	}
 
-	http.HandleFunc("/", handler)
-	fmt.Println("server running at 0.0.0.0:8080")
-	log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
+	// Init service and handler
+	service := identity.NewService(db, rabbit)
+	handler := identity.NewHandler(service)
+
+	// Gin routes
+	r := gin.Default()
+	api := r.Group("/identity")
+	identity.RegisterIdentityRoutes(api, handler)
+
+	log.Println("server running at 0.0.0.0:8080")
+	r.Run("0.0.0.0:8080")
+
 }

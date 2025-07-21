@@ -6,24 +6,23 @@ import (
 )
 
 func main() {
+	// 1. Connect to RabbitMQ
 	conn, err := queues.ConnectToRabbitmq()
 	utils.FailOnError(err, "Failed to connect to RabbitMQ after retries")
 	defer conn.Close()
 
+	// 2. Open channel
 	ch, err := conn.Channel()
 	utils.FailOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
-	err = queues.CreateNewExchange(ch, "verifiers", queues.ExchangeFanout)
-	utils.FailOnError(err, "Failed to declare an exchange")
+	// 3. Declare exchange and both queues, and bind
+	err = queues.SetupIdentityQueues(ch)
+	utils.FailOnError(err, "Failed to setup exchange/queues")
 
-	q, err := queues.CreateNewQueue(ch, "verified")
-	utils.FailOnError(err, "Failed to declare a queue")
+	// 4. Start consuming from the job queue ("identity.verified")
+	go queues.HandleIncomingMessages(ch, "identity.verified", "")
 
-	err = queues.BindQueueToExchange(ch, q.Name, "verifiers", "verifiers")
-	utils.FailOnError(err, "Failed to bind a queue")
-
-	go queues.HandleIncomingMessages(ch, q.Name, "")
-
+	// 5. Keep alive
 	select {}
 }
