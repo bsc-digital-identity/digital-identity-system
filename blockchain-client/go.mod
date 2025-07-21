@@ -3,10 +3,11 @@ module blockchain-client
 go 1.24.5
 
 require (
-	github.com/consensys/gnark v0.13.0
-	github.com/consensys/gnark-crypto v0.18.0
-	github.com/rabbitmq/amqp091-go v1.10.0
+    github.com/consensys/gnark v0.13.0
+    github.com/consensys/gnark-crypto v0.18.0
+    github.com/rabbitmq/amqp091-go v1.10.0
 )
+
 
 require (
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect

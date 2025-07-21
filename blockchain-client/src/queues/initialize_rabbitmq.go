@@ -17,10 +17,10 @@ const (
 	ExchangeHeaders RabbitmqExchangeType = "headers"
 )
 
+// ConnectToRabbitmq connects with retries
 func ConnectToRabbitmq() (*amqp.Connection, error) {
 	var conn *amqp.Connection
 	var err error
-	// might need to increase on different machines
 	maxRetries := 7
 	waitTime := 1 * time.Second
 
@@ -29,39 +29,39 @@ func ConnectToRabbitmq() (*amqp.Connection, error) {
 		if err == nil {
 			return conn, nil
 		}
-
 		log.Printf("Attempt %d failed: %v. Retrying in %v...", i+1, err, waitTime)
 		time.Sleep(waitTime)
-
 		waitTime = time.Duration(math.Pow(2, float64(i+1))) * time.Second
 	}
-
 	return nil, err
 }
 
-func CreateNewExchange(ch *amqp.Channel, ex_name string, ex_type RabbitmqExchangeType) error {
+// CreateNewExchange declares an exchange (e.g. "identity", direct)
+func CreateNewExchange(ch *amqp.Channel, exName string, exType RabbitmqExchangeType) error {
 	return ch.ExchangeDeclare(
-		ex_name,         // name
-		string(ex_type), // type
-		true,            // durable
-		false,           // auto-deleted
-		false,           // internal
-		false,           // no-wait
-		nil,             // arguments
+		exName,         // name
+		string(exType), // type
+		true,           // durable
+		false,          // auto-deleted
+		false,          // internal
+		false,          // no-wait
+		nil,            // arguments
 	)
 }
 
-func CreateNewQueue(ch *amqp.Channel, queueName string) (amqp.Queue, error) {
+// CreateNewQueue declares a queue with given durability/exclusivity
+func CreateNewQueue(ch *amqp.Channel, queueName string, durable, exclusive bool) (amqp.Queue, error) {
 	return ch.QueueDeclare(
 		queueName, // name
-		false,     // durable
+		durable,   // durable
 		false,     // delete when unused
-		true,      // exclusive
+		exclusive, // exclusive
 		false,     // no-wait
 		nil,       // arguments
 	)
 }
 
+// BindQueueToExchange binds a queue to an exchange with a routing key
 func BindQueueToExchange(ch *amqp.Channel, queueName, routingKey, exchangeName string) error {
 	return ch.QueueBind(
 		queueName,    // queue name
@@ -70,4 +70,27 @@ func BindQueueToExchange(ch *amqp.Channel, queueName, routingKey, exchangeName s
 		false,
 		nil,
 	)
+}
+
+// SetupIdentityQueues declares both main and result queues with proper bindings
+func SetupIdentityQueues(ch *amqp.Channel) error {
+	// Declare the direct exchange
+	if err := CreateNewExchange(ch, "identity", ExchangeDirect); err != nil {
+		return err
+	}
+	// Main verification job queue: NOT exclusive, NOT durable (unless you want persistence)
+	if _, err := CreateNewQueue(ch, "identity.verified", false, false); err != nil {
+		return err
+	}
+	if err := BindQueueToExchange(ch, "identity.verified", "identity.verified", "identity"); err != nil {
+		return err
+	}
+	// Results queue: NOT exclusive, NOT durable
+	if _, err := CreateNewQueue(ch, "identity.verified.results", false, false); err != nil {
+		return err
+	}
+	if err := BindQueueToExchange(ch, "identity.verified.results", "identity.verified.results", "identity"); err != nil {
+		return err
+	}
+	return nil
 }
