@@ -3,11 +3,13 @@ package main
 import (
 	"api/src/identity"
 	"api/src/queues"
+	"api/src/zkp"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/gin-gonic/gin"
 
 	"api/src/database"
 )
@@ -55,6 +57,8 @@ func main() {
 	r := gin.Default()
 	api := r.Group("/identity")
 	identity.RegisterIdentityRoutes(api, handler)
+
+	zkp.RegisterZkpRoutes(api, db)
 
 	log.Println("server running at 0.0.0.0:8080")
 	r.Run("0.0.0.0:8080")
