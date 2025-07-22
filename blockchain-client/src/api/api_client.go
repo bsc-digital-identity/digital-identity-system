@@ -11,7 +11,7 @@ import (
 func ReqeuestBase[T any, U any](urlAppendix, method string, apiErrorCh chan error, apiResponseCh chan T, body U) {
 	// TODO: steup envs
 	// urlPrefix := os.Getenv("API_URL")
-	urlPrefix := "localhost/api/v1/internal/identity"
+	urlPrefix := "http://api:8080/api/v1/internal/identity/"
 	fullUrl := urlPrefix + urlAppendix
 
 	var bodyReader io.Reader

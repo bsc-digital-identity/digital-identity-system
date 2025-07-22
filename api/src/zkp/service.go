@@ -6,7 +6,7 @@ import (
 )
 
 type ZkpService interface {
-	AddNew(proof ZKPProof) error
+	AddNew(superIdnenityId, identitySchemaId uuid.UUID, newRef string) error
 	UpdateBlockchainRef(superIdnenityId, identitySchemaId uuid.UUID, newRef string) error
 	AuthUser(superIdnenityId, identitySchemaId uuid.UUID) (*ZkpResponse, error)
 }
@@ -29,9 +29,9 @@ func NewZkpService(db *gorm.DB) *ZkpBlockchainService {
 	return &ZkpBlockchainService{db: db, blockhainAcc: nil}
 }
 
-func (s *ZkpBlockchainService) AddNew(proof ZKPProof) error {
-	result := s.db.Create(&proof)
-	return result.Error
+func (s *ZkpBlockchainService) AddNew(superIdnenityId, identitySchemaId uuid.UUID, newRef string) error {
+	// TODO : do it later
+	return nil
 }
 
 func (s *ZkpBlockchainService) UpdateBlockchainRef(superIdnenityId, identitySchemaId uuid.UUID, newRef string) error {

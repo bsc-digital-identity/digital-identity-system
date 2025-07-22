@@ -10,7 +10,8 @@ import (
 type ZKPProof struct {
 	Id                      int                    `gorm:"primaryKey;autoIncrement"`
 	DigitalIdentitySchemaId int                    // foreign key
-	SuperIdentityId         identity.SuperIdentity `gorm:"foreignKey:SuperIdentityId;references:Id"`
+	SuperIdentityId         int                    // actual foreign key
+	SuperIdentity           identity.SuperIdentity `gorm:"foreignKey:SuperIdentityId;references:Id"`
 	ProofReference          string
 }
 

@@ -55,7 +55,9 @@ func main() {
 
 	// Gin routes
 	r := gin.Default()
-	api := r.Group("/identity")
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+	api := r.Group("/api/v1/")
 	identity.RegisterIdentityRoutes(api, handler)
 
 	zkp.RegisterZkpRoutes(api, db)

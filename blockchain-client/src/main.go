@@ -3,17 +3,14 @@ package main
 import (
 	"blockchain-client/src/queues"
 	"blockchain-client/src/utils"
-	"log"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load()
+	//err := godotenv.Load()
 
-	if err != nil {
-		log.Fatal("Environement cannot be loaded")
-	}
+	//if err != nil {
+	//	log.Fatal("Environement cannot be loaded")
+	//}
 
 	// 1. Connect to RabbitMQ
 	conn, err := queues.ConnectToRabbitmq()
