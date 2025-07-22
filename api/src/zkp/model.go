@@ -1,8 +1,28 @@
 package zkp
 
+import (
+	"api/src/identity"
+
+	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/backend/witness"
+)
+
 type ZKPProof struct {
-	Id                int    `gorm:"primaryKey;autoIncrement"`
-	DigitalIdentityId int    // FK to SuperIdentity.Id
-	ProofReference    string // e.g. blockchain tx hash or IPFS reference
-	Description       string
+	Id                      int                    `gorm:"primaryKey;autoIncrement"`
+	DigitalIdentitySchemaId int                    // foreign key
+	SuperIdentityId         identity.SuperIdentity `gorm:"foreignKey:SuperIdentityId;references:Id"`
+	ProofReference          string
+}
+
+// TODO: Naming
+type ZkpResponse struct {
+	IsProofValid   bool
+	ProofReference string
+}
+
+type ZkpResult struct {
+	Proof         groth16.Proof
+	VerifyingKey  groth16.VerifyingKey
+	PublicWitness witness.Witness
+	TxHash        string
 }
