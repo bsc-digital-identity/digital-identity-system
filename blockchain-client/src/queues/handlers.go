@@ -90,9 +90,9 @@ func HandleIncomingMessages(ch *amqp.Channel, queueName, consumerTag string) {
 			blockRef, _ := uuid.NewRandom()
 
 			type ZkpProof struct {
-				DigitalIdentitySchemaId string
-				SuperIdentityId         string
-				ProofReference          string
+				DigitalIdentitySchemaId string `json:"identity_schema_id"`
+				SuperIdentityId         string `json:"super_identity_id"`
+				ProofReference          string `json:"blockchain_ref"`
 			}
 
 			validProofRequest := ZkpProof{
