@@ -3,18 +3,19 @@ module blockchain-client
 go 1.24.5
 
 require (
-    github.com/consensys/gnark v0.13.0
-    github.com/consensys/gnark-crypto v0.18.0
-    github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/consensys/gnark v0.13.0
+	github.com/consensys/gnark-crypto v0.18.0
+	github.com/rabbitmq/amqp091-go v1.10.0
 )
-
 
 require (
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.8.0 // indirect
 	github.com/google/pprof v0.0.0-20250607225305-033d6d78b36a // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/ingonyama-zk/icicle-gnark/v3 v3.2.2 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ronanh/intcomp v1.1.1 // indirect

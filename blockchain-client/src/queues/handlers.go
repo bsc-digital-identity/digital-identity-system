@@ -1,18 +1,22 @@
 package queues
 
 import (
+	"blockchain-client/src/api"
 	"blockchain-client/src/utils"
 	"blockchain-client/src/zkp"
 	"encoding/json"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type ZkpVerifiedMessage struct {
 	IdentityId string `json:"identity_id"`
+	SchemaId   string `json:"schema_id"`
 	BirthDay   int    `json:"birth_day"`
 	BirthMonth int    `json:"birth_month"`
 	BirthYear  int    `json:"birth_year"`
@@ -81,15 +85,30 @@ func HandleIncomingMessages(ch *amqp.Channel, queueName, consumerTag string) {
 			}
 
 			log.Println(zkpResult)
-			result := VerificationResultMessage{
-				IdentityId:   msg.IdentityId,
-				Success:      true,
-				BlockchainTx: zkpResult.TxHash, // adjust as needed
-				Error:        "",
+
+			// gen new blockchain ref
+			blockRef, _ := uuid.NewRandom()
+
+			type ZkpProof struct {
+				DigitalIdentitySchemaId string
+				SuperIdentityId         string
+				ProofReference          string
 			}
-			err = PublishVerificationResult(ch, "identity", "identity.verified.results", result)
-			if err != nil {
-				log.Printf("Failed to publish verification result: %s", err)
+
+			validProofRequest := ZkpProof{
+				blockRef.String(),
+				msg.IdentityId,
+				msg.SchemaId,
+			}
+
+			responseCh := make(chan struct{})
+			errorCh := make(chan error)
+			go api.ReqeuestBase[struct{}, ZkpProof]("create", http.MethodPost, errorCh, responseCh, validProofRequest)
+			select {
+			case <-responseCh:
+				log.Println("Succesffuly created new ZKP")
+			case err := <-errorCh:
+				log.Printf("Failed to create ZKP: %s", err)
 			}
 		}
 	}()
