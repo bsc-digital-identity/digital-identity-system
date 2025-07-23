@@ -18,8 +18,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Hello from Go Docker multistage")
 }
 
+type EnvType string
+
+const (
+	Dev  EnvType = "dev"
+	Prod EnvType = "prod"
+)
+
 func main() {
 	// Setup DB
+	isDev := Ternary(os.Getenv("ENV_TYPE") == string(Dev), true, false)
+
 	dbConn := os.Getenv("DB_CONNECTION_STRING")
 	if dbConn == "" {
 		dbConn = "./DigitalIdentity.db"
@@ -39,14 +48,8 @@ func main() {
 	}
 	defer rabbit.Close()
 
-	// Example: Insert admin if not exists
-	admin := identity.SuperIdentity{
-		IdentityId:   "admin-guid-here",
-		IdentityName: "admin",
-	}
-	result := db.FirstOrCreate(&admin, identity.SuperIdentity{IdentityName: "admin"})
-	if result.Error != nil {
-		log.Printf("Error inserting admin: %v", result.Error)
+	if isDev {
+		InitializeDev(db)
 	}
 
 	// Init service and handler
