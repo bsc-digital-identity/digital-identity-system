@@ -1,16 +1,18 @@
 package zkp
 
 import (
+	authschemas "api/src/auth_schemas"
 	"api/src/identity"
 
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/witness"
 )
 
-type ZKPProof struct {
+type ZKPProof[T comparable] struct {
 	Id                      int                    `gorm:"primaryKey;autoIncrement"`
 	DigitalIdentitySchemaId int                    // foreign key
-	SuperIdentityId         int                    // actual foreign key
+	IdentitySchema          authschemas.Schema[T]  `gorm:"foreignKey:DigitalIdentitySchemaId;references:Id"`
+	SuperIdentityId         int                    // foreign key
 	SuperIdentity           identity.SuperIdentity `gorm:"foreignKey:SuperIdentityId;references:Id"`
 	ProofReference          string
 }

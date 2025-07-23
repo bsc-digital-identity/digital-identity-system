@@ -17,6 +17,7 @@ services:
     working_dir: /root/app
     environment:
       - DB_CONNECTION_STRING=DigitalIdentity.db
+      - ENV_TYPE=dev
     ports:
       - "8080:8080"
     depends_on:
