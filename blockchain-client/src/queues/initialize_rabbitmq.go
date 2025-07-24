@@ -79,14 +79,14 @@ func SetupIdentityQueues(ch *amqp.Channel) error {
 		return err
 	}
 	// Main verification job queue: NOT exclusive, NOT durable (unless you want persistence)
-	if _, err := CreateNewQueue(ch, "identity.verified", false, false); err != nil {
+	if _, err := CreateNewQueue(ch, "identity.verified", true, false); err != nil {
 		return err
 	}
 	if err := BindQueueToExchange(ch, "identity.verified", "identity.verified", "identity"); err != nil {
 		return err
 	}
 	// Results queue: NOT exclusive, NOT durable
-	if _, err := CreateNewQueue(ch, "identity.verified.results", false, false); err != nil {
+	if _, err := CreateNewQueue(ch, "identity.verified.results", true, false); err != nil {
 		return err
 	}
 	if err := BindQueueToExchange(ch, "identity.verified.results", "identity.verified.results", "identity"); err != nil {

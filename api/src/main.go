@@ -51,6 +51,12 @@ func main() {
 	}
 	defer rabbit.Close()
 
+	// Ensure the results queue exists
+	resultsQueue := "identity.verified.results"
+	if err := rabbit.EnsureResultsQueue(resultsQueue); err != nil {
+		log.Fatalf("Failed to declare results queue: %v", err)
+	}
+
 	if isDev {
 		InitializeDev(db)
 	}
@@ -66,7 +72,11 @@ func main() {
 	api := r.Group("/api/v1/")
 	identity.RegisterIdentityRoutes(api, handler)
 
-	zkp.RegisterZkpRoutes(api, db)
+	resultsChannel, err := rabbit.Conn.Channel()
+
+	zkpService := zkp.NewZkpService(db)
+	zkpHandler := zkp.NewZkpHandler(zkpService, resultsChannel, "identity.verified.results")
+	_ = zkpHandler // just to avoid unused var warning, but handler runs in background
 
 	log.Println("server running at 0.0.0.0:8080")
 	r.Run("0.0.0.0:8080")

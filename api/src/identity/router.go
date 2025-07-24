@@ -14,6 +14,6 @@ func RegisterIdentityRoutes(rg *gin.RouterGroup, handler *Handler) {
 	// POST /identity/verify  (queue ZKP verification for blockchain client)
 	rg.POST("/verify", handler.QueueVerification)
 
-	rg.POST("/verify-result", HandleVerifyResult)
+	//rg.POST("/verify-result", HandleVerifyResult)
 
 }

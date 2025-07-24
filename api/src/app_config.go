@@ -1,8 +1,7 @@
 package main
 
 import (
-	authschemas "api/src/auth_schemas"
-	"api/src/identity"
+	"api/src/model"
 	"encoding/json"
 	"log"
 
@@ -13,7 +12,7 @@ import (
 func InitializeDev(db *gorm.DB) error {
 	// Example: Insert admin if not exists
 	admin_id, _ := uuid.NewRandom()
-	admin := identity.SuperIdentity{
+	admin := model.Identity{
 		IdentityId:   admin_id.String(),
 		IdentityName: "admin",
 	}
@@ -23,14 +22,14 @@ func InitializeDev(db *gorm.DB) error {
 		log.Printf("Error inserting admin: %v", result.Error)
 	}
 
-	constraint := authschemas.Constraint[int]{
+	constraint := model.Constraint[int]{
 		Key:        "Age",
-		Comparison: authschemas.GreaterThan,
+		Comparison: model.GreaterThan,
 		Value:      18,
 	}
 
-	schema := authschemas.Schema[int]{
-		Constraints: []authschemas.Constraint[int]{constraint},
+	schema := model.Schema[int]{
+		Constraints: []model.Constraint[int]{constraint},
 	}
 
 	serialized_schema, err := json.Marshal(schema)
@@ -39,7 +38,7 @@ func InitializeDev(db *gorm.DB) error {
 	}
 
 	schema_id, _ := uuid.NewRandom()
-	verifiable_schema := authschemas.VerifiableSchema{
+	verifiable_schema := model.VerifiedSchema{
 		SuperIdentityId: admin.Id,
 		SchemaId:        schema_id.String(),
 		Schema:          string(serialized_schema),

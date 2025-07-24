@@ -1,13 +1,11 @@
-package authschemas
+package model
 
-import "api/src/identity"
-
-type VerifiableSchema struct {
-	Id              int                    `gorm:"primaryKey;autoIncrement"`
-	SchemaId        string                 `gorm:"uniqueIndex"`
-	SuperIdentityId int                    // actual foreign key
-	SuperIdentity   identity.SuperIdentity `gorm:"foreignKey:SuperIdentityId;references:Id"`
-	Schema          string                 // json format as string
+type VerifiedSchema struct {
+	Id              int    `gorm:"primaryKey;autoIncrement"`
+	SchemaId        string `gorm:"uniqueIndex"`
+	SuperIdentityId int    // actual foreign key
+	//SuperIdentity   identity.Identity `gorm:"foreignKey:SuperIdentityId;references:Id"`
+	Schema string // json format as string
 }
 
 type Schema[T comparable] struct {
