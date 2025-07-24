@@ -16,13 +16,15 @@ services:
     container_name: identity-api
     working_dir: /root/app
     environment:
-      - DB_CONNECTION_STRING=DigitalIdentity.db
+      - DB_CONNECTION_STRING=sqlite/DigitalIdentity.db
       - ENV_TYPE=dev
     ports:
       - "8080:8080"
     depends_on:
       - rabbitmq
     restart: unless-stopped
+    volumes:
+      - ./api/sqlite:/root/app/sqlite
 
   blockchain-client:
     build:

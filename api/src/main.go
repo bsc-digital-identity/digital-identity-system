@@ -29,9 +29,12 @@ func main() {
 	// Setup DB
 	isDev := Ternary(os.Getenv("ENV_TYPE") == string(Dev), true, false)
 
+	// Ensure the sqlite directory exists before using it
+	os.MkdirAll("./sqlite", 0755)
+
 	dbConn := os.Getenv("DB_CONNECTION_STRING")
 	if dbConn == "" {
-		dbConn = "./DigitalIdentity.db"
+		dbConn = "./sqlite/DigitalIdentity.db"
 	}
 	db := database.ConnectToDatabase(dbConn)
 	if db == nil {
