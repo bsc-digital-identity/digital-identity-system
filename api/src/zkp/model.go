@@ -8,12 +8,12 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 )
 
-type ZKPProof[T comparable] struct {
-	Id                      int                    `gorm:"primaryKey;autoIncrement"`
-	DigitalIdentitySchemaId int                    // foreign key
-	IdentitySchema          authschemas.Schema[T]  `gorm:"foreignKey:DigitalIdentitySchemaId;references:Id"`
-	SuperIdentityId         int                    // foreign key
-	SuperIdentity           identity.SuperIdentity `gorm:"foreignKey:SuperIdentityId;references:Id"`
+type ZKPProof struct {
+	Id                      int                          `gorm:"primaryKey;autoIncrement"`
+	DigitalIdentitySchemaId int                          // foreign key to VerifiableSchema
+	DigitalIdentitySchema   authschemas.VerifiableSchema `gorm:"foreignKey:DigitalIdentitySchemaId;references:Id"`
+	SuperIdentityId         int                          // foreign key
+	SuperIdentity           identity.SuperIdentity       `gorm:"foreignKey:SuperIdentityId;references:Id"`
 	ProofReference          string
 }
 

@@ -3,7 +3,6 @@ package database
 import (
 	"log"
 
-	"api/src/attribute"
 	authschemas "api/src/auth_schemas"
 	"api/src/identity"
 	"api/src/zkp"
@@ -21,8 +20,8 @@ func ConnectToDatabase(connectionString string) *gorm.DB {
 	}
 
 	log.Println("Running migrations for tables")
-	err = db.AutoMigrate(&identity.SuperIdentity{},
-		&attribute.Attribute{},
+	err = db.AutoMigrate(
+		&identity.SuperIdentity{},
 		&authschemas.VerifiableSchema{},
 		&zkp.ZKPProof{})
 	if err != nil {

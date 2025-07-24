@@ -22,7 +22,7 @@ WORKDIR /root/app
 RUN apk add --no-cache sqlite
 
 COPY --from=builder /app/api .
-COPY sqlite/DigitalIdentity.db .
+#COPY sqlite/DigitalIdentity.db .
 
 EXPOSE 8080
 
