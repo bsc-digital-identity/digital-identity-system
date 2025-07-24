@@ -1,11 +1,8 @@
 package database
 
 import (
+	"api/src/model"
 	"log"
-
-	authschemas "api/src/auth_schemas"
-	"api/src/identity"
-	"api/src/zkp"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -21,9 +18,9 @@ func ConnectToDatabase(connectionString string) *gorm.DB {
 
 	log.Println("Running migrations for tables")
 	err = db.AutoMigrate(
-		&identity.SuperIdentity{},
-		&authschemas.VerifiableSchema{},
-		&zkp.ZKPProof{})
+		&model.Identity{},
+		&model.VerifiedSchema{},
+		&model.ZeroKnowledgeProof{})
 	if err != nil {
 		log.Fatal("Migrating database failed: ", err)
 	}

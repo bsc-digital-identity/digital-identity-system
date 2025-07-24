@@ -1,62 +1,35 @@
 package zkp
 
 import (
-	"github.com/google/uuid"
+	"api/src/model"
+	"encoding/json"
 	"gorm.io/gorm"
+	"log"
 )
 
+// Service interface
 type ZkpService interface {
-	AddNew(superIdnenityId, identitySchemaId uuid.UUID, newRef string) error
-	UpdateBlockchainRef(superIdnenityId, identitySchemaId uuid.UUID, newRef string) error
-	AuthUser(superIdnenityId, identitySchemaId uuid.UUID) (*ZkpResponse, error)
+	ProcessVerificationResult(resp model.ZeroKnowledgeProofVerificationResponse) error
 }
 
-type BlockchainPlacheloder struct {
-	Acc int
-}
-
-type BlockhainInterfacePlaceholder interface {
-	GetZkp(proofRef string) ZkpResult
-}
-
+// Implementation
 type ZkpBlockchainService struct {
-	db           *gorm.DB
-	blockhainAcc BlockhainInterfacePlaceholder
+	db *gorm.DB
 }
 
 func NewZkpService(db *gorm.DB) *ZkpBlockchainService {
-	// TODO: implement this
-	return &ZkpBlockchainService{db: db, blockhainAcc: nil}
+	return &ZkpBlockchainService{db: db}
 }
 
-func (s *ZkpBlockchainService) AddNew(superIdnenityId, identitySchemaId uuid.UUID, newRef string) error {
-	// TODO : do it later
+// Just log the result (later, you could insert into DB if needed)
+func (s *ZkpBlockchainService) ProcessVerificationResult(resp model.ZeroKnowledgeProofVerificationResponse) error {
+	// Log everything for now
+	data, _ := json.Marshal(resp)
+	log.Printf("Received ZKP Verification Result: %s", data)
 	return nil
 }
 
-func (s *ZkpBlockchainService) UpdateBlockchainRef(superIdnenityId, identitySchemaId uuid.UUID, newRef string) error {
-	// TODO: adjust query later
-	return s.db.Model(&ZKPProof{}).
-		Joins("JOIN super_identitiy ON zkp_proof.super_identity_id = super_identities.id").
-		Where("super_identitiy.uuid = ?", superIdnenityId).
-		Where("idnenity_schema.uuid = ?", identitySchemaId).
-		Update("zkp_proofs.proof_reference", newRef).Error
-}
-
-func (s *ZkpBlockchainService) AuthUser(superIdnenityId, identitySchemaId uuid.UUID) (*ZkpResponse, error) {
-	var zkpProof ZKPProof
-	// TODO: adjust query later
-	result := s.db.First(&zkpProof)
-
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	// TODO: implement zkp verification later
-	//zkpResult := s.blockhainAcc.GetZkp(zkpProof.ProofReference)
-
-	// verify here
-	// verified, err := verifier(zkpResult)
-
-	return &ZkpResponse{true, zkpProof.ProofReference}, nil
+// -- Placeholders for future blockchain interaction --
+type BlockhainInterfacePlaceholder interface {
+	GetZkp(proofRef string) model.ZeroKnowledgeProofResult
 }

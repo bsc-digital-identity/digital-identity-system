@@ -1,7 +1,9 @@
 package identity
 
 import (
+	"api/src/model"
 	"api/src/queues"
+	"fmt"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -15,34 +17,41 @@ func NewService(db *gorm.DB, rabbit *queues.RabbitPublisher) *Service {
 	return &Service{DB: db, Rabbit: rabbit}
 }
 
-func (s *Service) CreateIdentity(name string, birthDay, birthMonth, birthYear int) (*SuperIdentity, error) {
-	id := uuid.New().String()
-	identity := &SuperIdentity{
-		IdentityId:   id,
-		IdentityName: name,
-	}
-	err := Create(s.DB, identity)
-	if err != nil {
-		return nil, err
+func (s *Service) CreateIdentity(name string, parentId *int) (*model.Identity, error) {
+	if parentId != nil {
+		var parent model.Identity
+		if err := s.DB.First(&parent, *parentId).Error; err != nil {
+			return nil, fmt.Errorf("parent identity with Id %d does not exist", *parentId)
+		}
 	}
 
-	// Queue for blockchain verification
-	msg := queues.ZkpVerifiedMessage{
-		IdentityId: id,
-		BirthDay:   birthDay,
-		BirthMonth: birthMonth,
-		BirthYear:  birthYear,
+	id := uuid.New().String()
+	identity := &model.Identity{
+		IdentityId:   id,
+		IdentityName: name,
+		ParentId:     parentId,
 	}
-	_ = s.Rabbit.PublishZkpVerified(msg) // Optionally, handle/log error
+	if err := Create(s.DB, identity); err != nil {
+		return nil, err
+	}
+	//
+	//// Queue for blockchain verification
+	//msg := queues.ZkpVerifiedMessage{
+	//	IdentityId: id,
+	//	BirthDay:   birthDay,
+	//	BirthMonth: birthMonth,
+	//	BirthYear:  birthYear,
+	//}
+	//_ = s.Rabbit.PublishZkpVerificationRequest(msg) // Optionally, handle/log error
 
 	return identity, nil
 }
 
-func (s *Service) GetIdentityById(id string) (*SuperIdentity, error) {
+func (s *Service) GetIdentityById(id string) (*model.Identity, error) {
 	return GetById(s.DB, id)
 }
 
 // New: queue a ZKP verification message
-func (s *Service) QueueVerification(req queues.ZkpVerifiedMessage) error {
-	return s.Rabbit.PublishZkpVerified(req)
+func (s *Service) QueueVerification(req model.ZeroKnowledgeProofVerificationRequest) error {
+	return s.Rabbit.PublishZkpVerificationRequest(req)
 }

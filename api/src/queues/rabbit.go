@@ -1,18 +1,12 @@
 package queues
 
 import (
+	"api/src/model"
 	"encoding/json"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-type ZkpVerifiedMessage struct {
-	IdentityId string `json:"identity_id"`
-	BirthDay   int    `json:"birth_day"`
-	BirthMonth int    `json:"birth_month"`
-	BirthYear  int    `json:"birth_year"`
-}
 
 type RabbitPublisher struct {
 	Conn       *amqp.Connection
@@ -22,6 +16,7 @@ type RabbitPublisher struct {
 	RoutingKey string
 }
 
+// NewRabbitPublisher creates a new RabbitPublisher, ensures the exchange and queue exist, and binds them.
 func NewRabbitPublisher(amqpURL, exchange, queue, routingKey string) (*RabbitPublisher, error) {
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
@@ -33,10 +28,47 @@ func NewRabbitPublisher(amqpURL, exchange, queue, routingKey string) (*RabbitPub
 		return nil, err
 	}
 
-	// Exchange/queue setup (must match blockchain-client)
-	_ = ch.ExchangeDeclare(exchange, "direct", true, false, false, false, nil)
-	_, _ = ch.QueueDeclare(queue, false, false, false, false, nil)
-	_ = ch.QueueBind(queue, routingKey, exchange, false, nil)
+	// Declare the exchange (direct, durable)
+	if err := ch.ExchangeDeclare(
+		exchange,
+		"direct",
+		true,  // durable
+		false, // auto-delete
+		false, // internal
+		false, // no-wait
+		nil,
+	); err != nil {
+		ch.Close()
+		conn.Close()
+		return nil, err
+	}
+
+	// Declare the queue (durable)
+	if _, err := ch.QueueDeclare(
+		queue,
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,
+	); err != nil {
+		ch.Close()
+		conn.Close()
+		return nil, err
+	}
+
+	// Bind the queue to the exchange with routing key
+	if err := ch.QueueBind(
+		queue,
+		routingKey,
+		exchange,
+		false,
+		nil,
+	); err != nil {
+		ch.Close()
+		conn.Close()
+		return nil, err
+	}
 
 	return &RabbitPublisher{
 		Conn:       conn,
@@ -47,8 +79,17 @@ func NewRabbitPublisher(amqpURL, exchange, queue, routingKey string) (*RabbitPub
 	}, nil
 }
 
-func (r *RabbitPublisher) PublishZkpVerified(msg ZkpVerifiedMessage) error {
-	body, err := json.Marshal(msg)
+func (r *RabbitPublisher) EnsureResultsQueue(queueName string) error {
+	_, err := r.Channel.QueueDeclare(
+		queueName,
+		true, false, false, false, nil,
+	)
+	return err
+}
+
+// PublishZkpVerificationRequest publishes a ZKP verification request to the queue.
+func (r *RabbitPublisher) PublishZkpVerificationRequest(req model.ZeroKnowledgeProofVerificationRequest) error {
+	body, err := json.Marshal(req)
 	if err != nil {
 		return err
 	}
@@ -65,6 +106,7 @@ func (r *RabbitPublisher) PublishZkpVerified(msg ZkpVerifiedMessage) error {
 	)
 }
 
+// Close closes the AMQP channel and connection.
 func (r *RabbitPublisher) Close() {
 	r.Channel.Close()
 	r.Conn.Close()

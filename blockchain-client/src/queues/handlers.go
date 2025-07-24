@@ -1,12 +1,9 @@
 package queues
 
 import (
-	"blockchain-client/src/api"
 	"blockchain-client/src/utils"
-	"blockchain-client/src/zkp"
 	"encoding/json"
 	"log"
-	"net/http"
 	"sync"
 	"time"
 
@@ -14,19 +11,17 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type ZkpVerifiedMessage struct {
+type ZeroKnowledgeProofVerificationRequest struct {
 	IdentityId string `json:"identity_id"`
-	SchemaId   string `json:"schema_id"`
-	BirthDay   int    `json:"birth_day"`
-	BirthMonth int    `json:"birth_month"`
-	BirthYear  int    `json:"birth_year"`
+	Schema     string `json:"schema"` // schema as JSON string
 }
 
-type VerificationResultMessage struct {
-	IdentityId   string `json:"identity_id"`
-	Success      bool   `json:"success"`
-	BlockchainTx string `json:"blockchain_tx,omitempty"`
-	Error        string `json:"error,omitempty"`
+type ZeroKnowledgeProofVerificationResponse struct {
+	IdentityId     string `json:"identity_id"`
+	IsProofValid   bool   `json:"is_proof_valid"`
+	ProofReference string `json:"proof_reference"`
+	Schema         string `json:"schema"`
+	Error          string `json:"error,omitempty"`
 }
 
 func HandleIncomingMessages(ch *amqp.Channel, queueName, consumerTag string) {
@@ -56,68 +51,43 @@ func HandleIncomingMessages(ch *amqp.Channel, queueName, consumerTag string) {
 		for d := range msgs {
 			log.Printf("[%s] %s", queueName, d.Body)
 
-			var msg ZkpVerifiedMessage
-			err := json.Unmarshal(d.Body, &msg)
+			var req ZeroKnowledgeProofVerificationRequest
+			err := json.Unmarshal(d.Body, &req)
 			if err != nil {
-				log.Printf("Failed to unmarshal message: %s", err)
-				// If possible, try to extract identity_id for reporting
-				var partial struct {
-					IdentityId string `json:"identity_id"`
+				result := ZeroKnowledgeProofVerificationResponse{
+					IdentityId:   req.IdentityId,
+					IsProofValid: false,
+					Error:        "unmarshal: " + err.Error(),
 				}
-				_ = json.Unmarshal(d.Body, &partial)
-				_ = PublishVerificationResult(ch, "identity", "identity.verified.results", VerificationResultMessage{
-					IdentityId: partial.IdentityId,
-					Success:    false,
-					Error:      "unmarshal: " + err.Error(),
-				})
+				_ = PublishVerificationResult(ch, "identity", "identity.verified.results", result)
 				continue
 			}
 
-			zkpResult, err := zkp.CreateZKP(msg.BirthDay, msg.BirthMonth, msg.BirthYear)
-			if err != nil {
-				log.Printf("Failed to create ZKP: %s", err)
-				_ = PublishVerificationResult(ch, "identity", "identity.verified.results", VerificationResultMessage{
-					IdentityId: msg.IdentityId,
-					Success:    false,
-					Error:      "zkp: " + err.Error(),
-				})
-				continue
-			}
-
-			log.Println(zkpResult)
-
-			// gen new blockchain ref
-			blockRef, _ := uuid.NewRandom()
-
-			type ZkpProof struct {
-				DigitalIdentitySchemaId string `json:"identity_schema_id"`
-				SuperIdentityId         string `json:"super_identity_id"`
-				ProofReference          string `json:"blockchain_ref"`
-			}
-
-			validProofRequest := ZkpProof{
-				blockRef.String(),
-				msg.IdentityId,
-				msg.SchemaId,
-			}
-
-			responseCh := make(chan struct{})
-			errorCh := make(chan error)
-			go api.ReqeuestBase[struct{}, ZkpProof]("create", http.MethodPost, errorCh, responseCh, validProofRequest)
-			select {
-			case <-responseCh:
-				log.Println("Succesffuly created new ZKP")
-			case err := <-errorCh:
-				log.Printf("Failed to create ZKP: %s", err)
-			}
+			result := MockZKPVerification(req)
+			_ = PublishVerificationResult(ch, "identity", "identity.verified.results", result)
+			log.Printf("Processed ZKP Verification for %s. ProofReference: %s", req.IdentityId, result.ProofReference)
 		}
 	}()
 
 	waitGroup.Wait()
 }
 
-func PublishVerificationResult(ch *amqp.Channel, exchange, routingKey string, msg VerificationResultMessage) error {
-	body, err := json.Marshal(msg)
+func MockZKPVerification(req ZeroKnowledgeProofVerificationRequest) ZeroKnowledgeProofVerificationResponse {
+	ref := uuid.NewString()
+	return ZeroKnowledgeProofVerificationResponse{
+		IdentityId:     req.IdentityId,
+		IsProofValid:   true,
+		ProofReference: ref,
+		Schema:         req.Schema,
+	}
+}
+
+func PublishVerificationResult(
+	ch *amqp.Channel,
+	exchange, routingKey string,
+	resp ZeroKnowledgeProofVerificationResponse,
+) error {
+	body, err := json.Marshal(resp)
 	if err != nil {
 		return err
 	}
