@@ -75,7 +75,7 @@ func main() {
 	resultsChannel, err := rabbit.Conn.Channel()
 
 	zkpService := zkp.NewZkpService(db)
-	zkpHandler := zkp.NewZkpHandler(zkpService, resultsChannel, "identity.verified.results")
+	zkpHandler := zkp.NewZeroKnowledgeProofHandler(zkpService, resultsChannel, "identity.verified.results")
 	_ = zkpHandler // just to avoid unused var warning, but handler runs in background
 
 	log.Println("server running at 0.0.0.0:8080")
