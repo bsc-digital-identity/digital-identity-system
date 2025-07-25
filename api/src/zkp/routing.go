@@ -9,7 +9,7 @@ package zkp
 //
 //func RegisterZkpRoutes(rg *gin.RouterGroup, db *gorm.DB) {
 //	service := NewZkpService(db)
-//	handler := NewZkpHandler(service)
+//	handler := NewZeroKnowledgeProofHandler(service)
 //
 //	internal := rg.Group("internal/identity")
 //	internal.Use(middleware.InternalAuthMiddleware())
