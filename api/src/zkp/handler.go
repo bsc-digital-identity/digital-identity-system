@@ -7,14 +7,14 @@ import (
 	"log"
 )
 
-type ZkpHandler struct {
+type ZeroKnowledgeProofHandler struct {
 	service      ZkpService
 	amqpChannel  *amqp.Channel
 	resultsQueue string
 }
 
-func NewZkpHandler(service ZkpService, amqpChannel *amqp.Channel, resultsQueue string) *ZkpHandler {
-	h := &ZkpHandler{
+func NewZeroKnowledgeProofHandler(service ZkpService, amqpChannel *amqp.Channel, resultsQueue string) *ZeroKnowledgeProofHandler {
+	h := &ZeroKnowledgeProofHandler{
 		service:      service,
 		amqpChannel:  amqpChannel,
 		resultsQueue: resultsQueue,
@@ -24,7 +24,7 @@ func NewZkpHandler(service ZkpService, amqpChannel *amqp.Channel, resultsQueue s
 }
 
 // Listen for verification results from the queue
-func (h *ZkpHandler) listenResultsQueue() {
+func (h *ZeroKnowledgeProofHandler) listenResultsQueue() {
 	msgs, err := h.amqpChannel.Consume(
 		h.resultsQueue,
 		"zkp-result-consumer",
@@ -51,6 +51,10 @@ func (h *ZkpHandler) listenResultsQueue() {
 			log.Printf("Failed to process verification result: %v", err)
 		} else {
 			log.Printf("Processed ZKP verification result for identity: %s", resp.IdentityId)
+			log.Printf(
+				"ZKP Verification Result: identity_id=%s | is_proof_valid=%v | proof_reference=%s | schema=%s | error=%s",
+				resp.IdentityId, resp.IsProofValid, resp.ProofReference, resp.Schema, resp.Error,
+			)
 		}
 	}
 }
