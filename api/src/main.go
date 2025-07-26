@@ -60,23 +60,20 @@ func main() {
 	if isDev {
 		InitializeDev(db)
 	}
+	resultsChannel, err := rabbit.Conn.Channel()
 
-	// Init service and handler
-	service := identity.NewService(db, rabbit)
-	handler := identity.NewHandler(service)
+	// Init identityRepo / identityService / identityHandler
+	identityHandler, _ := identity.Build(db, rabbit)
+	// Init zkpRepo / zkpService / zkpHandler
+	zkpHandler, _ := zkp.Build(db, resultsChannel)
+	_ = zkpHandler // just to avoid unused var warning, but identityHandler runs in background
 
 	// Gin routes
 	r := gin.Default()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 	api := r.Group("/api/v1/")
-	identity.RegisterIdentityRoutes(api, handler)
-
-	resultsChannel, err := rabbit.Conn.Channel()
-
-	zkpService := zkp.NewZkpService(db)
-	zkpHandler := zkp.NewZeroKnowledgeProofHandler(zkpService, resultsChannel, "identity.verified.results")
-	_ = zkpHandler // just to avoid unused var warning, but handler runs in background
+	identity.RegisterIdentityRoutes(api, identityHandler)
 
 	log.Println("server running at 0.0.0.0:8080")
 	r.Run("0.0.0.0:8080")
