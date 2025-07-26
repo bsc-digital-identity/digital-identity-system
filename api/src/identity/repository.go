@@ -5,24 +5,39 @@ import (
 	"gorm.io/gorm"
 )
 
-func Create(db *gorm.DB, identity *model.Identity) error {
-	return db.Create(identity).Error
+type Repository interface {
+	Create(identity *model.Identity) error
+	GetById(id string) (*model.Identity, error)
+	GetByName(name string) (*model.Identity, error)
+	GetSubIdentities(parentId int) ([]model.Identity, error)
 }
 
-func GetById(db *gorm.DB, id string) (*model.Identity, error) {
+type gormRepository struct {
+	db *gorm.DB
+}
+
+func NewRepository(db *gorm.DB) Repository {
+	return &gormRepository{db: db}
+}
+
+func (r *gormRepository) Create(identity *model.Identity) error {
+	return r.db.Create(identity).Error
+}
+
+func (r *gormRepository) GetById(id string) (*model.Identity, error) {
 	var identity model.Identity
-	err := db.Where("identity_id = ?", id).First(&identity).Error
+	err := r.db.Where("identity_id = ?", id).First(&identity).Error
 	return &identity, err
 }
 
-func GetByName(db *gorm.DB, name string) (*model.Identity, error) {
+func (r *gormRepository) GetByName(name string) (*model.Identity, error) {
 	var identity model.Identity
-	err := db.Where("identity_name = ?", name).First(&identity).Error
+	err := r.db.Where("identity_name = ?", name).First(&identity).Error
 	return &identity, err
 }
 
-func GetSubIdentities(db *gorm.DB, parentId int) ([]model.Identity, error) {
+func (r *gormRepository) GetSubIdentities(parentId int) ([]model.Identity, error) {
 	var subs []model.Identity
-	err := db.Where("parent_id = ?", parentId).Find(&subs).Error
+	err := r.db.Where("parent_id = ?", parentId).Find(&subs).Error
 	return subs, err
 }
