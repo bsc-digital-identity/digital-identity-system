@@ -1,13 +1,14 @@
 package zkp
 
 import (
-	amqp "github.com/rabbitmq/amqp091-go"
 	"gorm.io/gorm"
 )
 
-func Build(db *gorm.DB, resultsChannel *amqp.Channel) (*ZeroKnowledgeProofHandler, error) {
+import "api/src/queues"
+
+func Build(db *gorm.DB, consumer *queues.RabbitConsumer) (*ZeroKnowledgeProofHandler, error) {
 	zkpRepo := NewZkpRepository(db)
 	zkpService := NewZkpService(zkpRepo)
-	zkpHandler := NewZeroKnowledgeProofHandler(zkpService, resultsChannel, "identity.verified.results")
+	zkpHandler := NewZeroKnowledgeProofHandler(zkpService, consumer)
 	return zkpHandler, nil
 }

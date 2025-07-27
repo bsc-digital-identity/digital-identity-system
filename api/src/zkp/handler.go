@@ -2,49 +2,34 @@ package zkp
 
 import (
 	"api/src/model"
+	"api/src/queues"
 	"encoding/json"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"log"
+
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type ZeroKnowledgeProofHandler struct {
-	service      ZkpService
-	amqpChannel  *amqp.Channel
-	resultsQueue string
+	service  ZkpService
+	consumer *queues.RabbitConsumer
 }
 
-func NewZeroKnowledgeProofHandler(service ZkpService, amqpChannel *amqp.Channel, resultsQueue string) *ZeroKnowledgeProofHandler {
+func NewZeroKnowledgeProofHandler(service ZkpService, consumer *queues.RabbitConsumer) *ZeroKnowledgeProofHandler {
 	h := &ZeroKnowledgeProofHandler{
-		service:      service,
-		amqpChannel:  amqpChannel,
-		resultsQueue: resultsQueue,
+		service:  service,
+		consumer: consumer,
 	}
-	go h.listenResultsQueue() // start listener in background
+	// Start consuming in background
+	go h.listenResultsQueue()
 	return h
 }
 
-// Listen for verification results from the queue
 func (h *ZeroKnowledgeProofHandler) listenResultsQueue() {
-	msgs, err := h.amqpChannel.Consume(
-		h.resultsQueue,
-		"zkp-result-consumer",
-		true,  // auto-ack
-		false, // exclusive
-		false, // no-local
-		false, // no-wait
-		nil,   // args
-	)
-	if err != nil {
-		log.Printf("Failed to register result queue consumer: %v", err)
-		return
-	}
-	log.Println("Listening for ZKP verification results...")
-	for d := range msgs {
-		// Handle each result message here
+	err := h.consumer.StartConsume(func(d amqp.Delivery) {
 		var resp model.ZeroKnowledgeProofVerificationResponse
 		if err := json.Unmarshal(d.Body, &resp); err != nil {
 			log.Printf("Failed to unmarshal result: %v", err)
-			continue
+			return
 		}
 		// Save to DB, update state, etc
 		if err := h.service.ProcessVerificationResult(resp); err != nil {
@@ -56,5 +41,9 @@ func (h *ZeroKnowledgeProofHandler) listenResultsQueue() {
 				resp.IdentityId, resp.IsProofValid, resp.ProofReference, resp.Schema, resp.Error,
 			)
 		}
+	})
+	if err != nil {
+		log.Printf("Failed to register result queue consumer: %v", err)
 	}
+	log.Println("Listening for ZKP verification results...")
 }
