@@ -1,0 +1,29 @@
+on:
+  pull_request:
+    branches:
+    - main
+
+jobs:
+  test:
+    name: run project tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo 
+      uses: actions/checkout@v4
+
+    - name: Setup go environment 
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24.5'
+
+    - name: Check go version 
+      run: go version
+
+    - name: Download dependencies for blockchain-client project
+      working-directory: ./blockchain-client
+      run: go mod download
+
+    - name: Run tests for blockchain-client project
+      working-directory: ./blockchain-client/test
+      run: go test -v
