@@ -11,6 +11,8 @@ jobs:
     steps:
     - name: Checkout repo 
       uses: actions/checkout@v4
+      with: 
+        path: 'src'
 
     - name: Setup go environment 
       uses: actions/setup-go@v5
@@ -21,9 +23,9 @@ jobs:
       run: go version
 
     - name: Download dependencies for blockchain-client project
-      working-directory: blockchain-client
+      working-directory: ./src/blockchain-client
       run: go mod download
 
     - name: Run tests for blockchain-client project
-      working-directory: blockchain-client/test
+      working-directory: ./src/blockchain-client/test
       run: go test -v
