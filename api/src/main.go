@@ -41,42 +41,43 @@ func main() {
 		log.Fatal("Database connection failed")
 	}
 
+	if isDev {
+		InitializeDev(db)
+	}
+
 	// Setup RabbitMQ
-	rabbit, err := queues.NewRabbitPublisher(
+	rabbitPublisher, err := queues.NewRabbitPublisher(
 		"amqp://guest:guest@rabbitmq:5672/",
 		"identity", "identity.verified", "identity.verified",
 	)
 	if err != nil {
 		log.Fatalf("RabbitMQ setup error: %v", err)
 	}
-	defer rabbit.Close()
+	defer rabbitPublisher.Close()
 
 	// Ensure the results queue exists
 	resultsQueue := "identity.verified.results"
-	if err := rabbit.EnsureResultsQueue(resultsQueue); err != nil {
+	if err := rabbitPublisher.EnsureResultsQueue(resultsQueue); err != nil {
 		log.Fatalf("Failed to declare results queue: %v", err)
 	}
 
-	if isDev {
-		InitializeDev(db)
+	rabbitConsumer, err := queues.NewRabbitConsumer(rabbitPublisher.Conn, resultsQueue)
+	if err != nil {
+		log.Fatalf("Failed to setup result consumer: %v", err)
 	}
 
-	// Init service and handler
-	service := identity.NewService(db, rabbit)
-	handler := identity.NewHandler(service)
+	// Init identityRepo / identityService / identityHandler
+	identityHandler, _ := identity.Build(db, rabbitPublisher)
+	// Init zkpRepo / zkpService / zkpHandler
+	zkpHandler, _ := zkp.Build(db, rabbitConsumer)
 
 	// Gin routes
 	r := gin.Default()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 	api := r.Group("/api/v1/")
-	identity.RegisterIdentityRoutes(api, handler)
-
-	resultsChannel, err := rabbit.Conn.Channel()
-
-	zkpService := zkp.NewZkpService(db)
-	zkpHandler := zkp.NewZkpHandler(zkpService, resultsChannel, "identity.verified.results")
-	_ = zkpHandler // just to avoid unused var warning, but handler runs in background
+	identity.RegisterIdentityRoutes(api, identityHandler)
+	_ = zkpHandler // just to avoid unused var warning, but identityHandler runs in background
 
 	log.Println("server running at 0.0.0.0:8080")
 	r.Run("0.0.0.0:8080")
