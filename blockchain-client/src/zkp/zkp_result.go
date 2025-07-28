@@ -16,9 +16,9 @@ type ZkpResult struct {
 }
 
 type intermediateSerializationStep struct {
-	Proof         []byte
-	VerifyingKey  []byte
-	PublicWitness []byte
+	Proof         []byte `borsh:"proof"`
+	VerifyingKey  []byte `borsh:"verifying_key"`
+	PublicWitness []byte `borsh:"public_witness"`
 }
 
 func (zr *ZkpResult) SerializeBorsh() ([]byte, error) {

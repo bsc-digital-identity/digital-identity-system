@@ -8,7 +8,7 @@ use solana_program::{
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct ZkpResult {
-    pub proof_json: Vec<u8>,
+    pub proof: Vec<u8>,
     pub verifying_key: Vec<u8>,
     pub public_witness: Vec<u8>,
 }
@@ -24,9 +24,7 @@ pub fn process_instruction(
     let accounts_iter = &mut accounts.iter();
     let account = next_account_info(accounts_iter)?;
 
-    if account.owner != program_id {
-        return Err(ProgramError::IncorrectProgramId);
-    }
+    println!("Instruction data length: {}", instruction_data.len());
 
     let zkp_result = ZkpResult::try_from_slice(instruction_data)?;
     let mut account_data = account.data.borrow_mut();
