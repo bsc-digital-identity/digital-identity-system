@@ -18,7 +18,8 @@ COPY --from=builder /app ./app
 
 WORKDIR /root/app
 
-COPY identity_app-keypair.json ./
+# solana keypairs
+COPY identity_app-keypair.json id.json ./
 
 EXPOSE 8001
 

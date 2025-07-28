@@ -1,6 +1,7 @@
 package queues
 
 import (
+	"blockchain-client/src/external"
 	"blockchain-client/src/utils"
 	"encoding/json"
 	"log"
@@ -24,7 +25,11 @@ type ZeroKnowledgeProofVerificationResponse struct {
 	Error          string `json:"error,omitempty"`
 }
 
-func HandleIncomingMessages(ch *amqp.Channel, queueName, consumerTag string) {
+func HandleIncomingMessages(
+	solanaClient *external.SolanaClient,
+	ch *amqp.Channel,
+	queueName,
+	consumerTag string) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("[%s] Recovered from panic for consumer: %s, %v\n", queueName, consumerTag, r)
