@@ -9,13 +9,12 @@ import (
 type Keys struct {
 	ContractPublicKey solana.PublicKey
 	AccountPublicKey  solana.PublicKey
-	ContractPayerKey  solana.PrivateKey
 }
 
 type SharedSolanaConfig struct {
 	// TODO: for zookeeper modifications
-	Mu     sync.Mutex
-	Config *Keys
+	Mu   sync.Mutex
+	Keys *Keys
 }
 
 func LoadSolanaKeys() (*SharedSolanaConfig, error) {
@@ -32,11 +31,10 @@ func LoadSolanaKeys() (*SharedSolanaConfig, error) {
 	solanaConfig := &Keys{
 		ContractPublicKey: contractPrivateKey.PublicKey(),
 		AccountPublicKey:  accountPrivateKey.PublicKey(),
-		ContractPayerKey:  accountPrivateKey,
 	}
 
 	return &SharedSolanaConfig{
-		Mu:     sync.Mutex{},
-		Config: solanaConfig,
+		Mu:   sync.Mutex{},
+		Keys: solanaConfig,
 	}, nil
 }
