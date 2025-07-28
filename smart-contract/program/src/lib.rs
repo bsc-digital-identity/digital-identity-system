@@ -7,8 +7,10 @@ use solana_program::{
 };
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct GreetingAccount {
-    pub counter: u32,
+pub struct ZkpResult {
+    pub proof_json: Vec<u8>,
+    pub verifying_key: Vec<u8>,
+    pub public_witness: Vec<u8>,
 }
 
 #[cfg(not(feature = "exclude_entrypoint"))]
@@ -26,8 +28,8 @@ pub fn process_instruction(
         return Err(ProgramError::IncorrectProgramId);
     }
 
-    let mut greeting = GreetingAccount::try_from_slice(&account.data.borrow())?;
-    greeting.counter += 1;
-    greeting.serialize(&mut &mut account.data.borrow_mut()[..])?;
+    let mut zkp_result = ZkpResult::try_from_slice(&account.data.borrow())?;
+    let mut account_data = account.data.borrow_mut();
+    zkp_result.serialize(&mut *account_data)?;
     Ok(())
 }

@@ -2,13 +2,10 @@ package test
 
 import (
 	zkp "blockchain-client/src/zkp"
-	"bytes"
 	"testing"
 	"time"
 
 	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/backend/witness"
-	"github.com/near/borsh-go"
 )
 
 type ZkpTestingParams struct {
@@ -102,70 +99,17 @@ func TestSerializationForZKP(t *testing.T) {
 		t.Fatalf("Failed to create ZKP: %v", err)
 	}
 
-	var proofBuf bytes.Buffer
-	_, err = zkpRes.Proof.WriteTo(&proofBuf)
+	serialized, err := zkpRes.SerializeBorsh()
 	if err != nil {
 		t.Fatalf("Proof serialization failed: %v", err)
 	}
 
-	var vkBuf bytes.Buffer
-	_, err = zkpRes.VerifyingKey.WriteTo(&vkBuf)
+	reconstructedZkp, err := zkp.ReconstructZkpResult(serialized)
 	if err != nil {
-		t.Fatalf("VerifyingKey serialization failed: %v", err)
+		t.Fatalf("ZKP recoonstruction failed: %v", err)
 	}
 
-	var witnessBuf bytes.Buffer
-	_, err = zkpRes.PublicWitness.WriteTo(&witnessBuf)
-	if err != nil {
-		t.Fatalf("Witness serialization failed: %v", err)
-	}
-
-	zkpSerializable := struct {
-		Proof         []byte
-		VerifyingKey  []byte
-		PublicWitness []byte
-	}{
-		Proof:         proofBuf.Bytes(),
-		VerifyingKey:  vkBuf.Bytes(),
-		PublicWitness: witnessBuf.Bytes(),
-	}
-
-	serializedZkp, err := borsh.Serialize(zkpSerializable)
-	if err != nil {
-		t.Fatalf("Borsh serialization failed: %v", err)
-	}
-
-	// deserialize the data
-	var deserialized struct {
-		Proof         []byte
-		VerifyingKey  []byte
-		PublicWitness []byte
-	}
-	err = borsh.Deserialize(&deserialized, serializedZkp)
-	if err != nil {
-		t.Fatalf("Borsh deserialization failed: %v", err)
-	}
-
-	// proof deconstruction and verification
-	proof := groth16.NewProof(zkp.ElipticalCurveID)
-	_, err = proof.ReadFrom(bytes.NewReader(deserialized.Proof))
-	if err != nil {
-		t.Fatalf("Proof deserialization failed: %v", err)
-	}
-
-	vk := groth16.NewVerifyingKey(zkp.ElipticalCurveID)
-	_, err = vk.ReadFrom(bytes.NewReader(deserialized.VerifyingKey))
-	if err != nil {
-		t.Fatalf("VerifyingKey deserialization failed: %v", err)
-	}
-
-	witness, err := witness.New(zkp.ElipticalCurveID.ScalarField())
-	_, err = witness.ReadFrom(bytes.NewReader(deserialized.PublicWitness))
-	if err != nil {
-		t.Fatalf("Witness deserialization failed: %v", err)
-	}
-
-	err = groth16.Verify(proof, vk, witness)
+	err = groth16.Verify(reconstructedZkp.Proof, reconstructedZkp.VerifyingKey, reconstructedZkp.PublicWitness)
 	if tt.shouldVerify && err != nil {
 		t.Errorf("Expected verification to pass but got error: %v", err)
 	}

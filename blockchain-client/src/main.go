@@ -1,21 +1,28 @@
 package main
 
 import (
+	"blockchain-client/src/config"
+	"blockchain-client/src/external"
 	"blockchain-client/src/queues"
 	"blockchain-client/src/utils"
 	"log"
 
-	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/rpc"
 )
 
 func main() {
 	//err := godotenv.Load()
 
-	contractPrivateKey, err := solana.PrivateKeyFromSolanaKeygenFile("identity_app-keypair.json")
-	log.Println(contractPrivateKey.PublicKey())
-	//if err != nil {
-	//	log.Fatal("Environement cannot be loaded")
-	//}
+	solanaConfig, err := config.LoadSolanaKeys()
+	if err != nil {
+		log.Fatal("Unable to load keypairs for solana")
+	}
+
+	rpcClient := rpc.New("http://127.0.0.1:8899")
+	solanaClient := &external.SolanaClient{
+		Config:    solanaConfig,
+		RpcClient: rpcClient,
+	}
 
 	// 1. Connect to RabbitMQ
 	conn, err := queues.ConnectToRabbitmq()
@@ -32,7 +39,7 @@ func main() {
 	utils.FailOnError(err, "Failed to setup exchange/queues")
 
 	// 4. Start consuming from the job queue ("identity.verified")
-	go queues.HandleIncomingMessages(ch, "identity.verified", "")
+	go queues.HandleIncomingMessages(solanaClient, ch, "identity.verified", "")
 
 	// 5. Keep alive
 	select {}
