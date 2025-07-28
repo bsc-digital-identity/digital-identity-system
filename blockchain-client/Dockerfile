@@ -18,6 +18,8 @@ COPY --from=builder /app ./app
 
 WORKDIR /root/app
 
+COPY identity_app-keypair.json ./
+
 EXPOSE 8001
 
 CMD ["./blockchain-client"]

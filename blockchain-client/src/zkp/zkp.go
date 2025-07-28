@@ -10,6 +10,10 @@ import (
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 )
 
+const (
+	ElipticalCurveID = ecc.BN254
+)
+
 // IdentityCircuit defines the circuit structure
 type IdentityCircuit struct {
 	AgeDay   frontend.Variable `gnark:",secret"`
@@ -41,13 +45,13 @@ type ZkpResult struct {
 	Proof         groth16.Proof
 	VerifyingKey  groth16.VerifyingKey
 	PublicWitness witness.Witness
-	TxHash        string
+	TxHash        string `borsh_skip:"true"`
 }
 
 func CreateZKP(birthDay, birthMonth, birthYear int) (*ZkpResult, error) {
 	// 1. Compile the circuit (constraint system)
 	ccs, err := frontend.Compile(
-		ecc.BN254.ScalarField(),
+		ElipticalCurveID.ScalarField(),
 		r1cs.NewBuilder,
 		&IdentityCircuit{},
 	)

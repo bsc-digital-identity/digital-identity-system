@@ -3,11 +3,16 @@ package main
 import (
 	"blockchain-client/src/queues"
 	"blockchain-client/src/utils"
+	"log"
+
+	"github.com/gagliardetto/solana-go"
 )
 
 func main() {
 	//err := godotenv.Load()
 
+	contractPrivateKey, err := solana.PrivateKeyFromSolanaKeygenFile("identity_app-keypair.json")
+	log.Println(contractPrivateKey.PublicKey())
 	//if err != nil {
 	//	log.Fatal("Environement cannot be loaded")
 	//}
