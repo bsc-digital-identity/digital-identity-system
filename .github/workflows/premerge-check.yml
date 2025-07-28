@@ -21,9 +21,9 @@ jobs:
       run: go version
 
     - name: Download dependencies for blockchain-client project
-      working-directory: ./blockchain-client
+      working-directory: blockchain-client
       run: go mod download
 
     - name: Run tests for blockchain-client project
-      working-directory: ./blockchain-client/test
+      working-directory: blockchain-client/test
       run: go test -v
