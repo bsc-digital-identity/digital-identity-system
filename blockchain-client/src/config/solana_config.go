@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"sync"
 
 	"github.com/gagliardetto/solana-go"
@@ -9,6 +10,7 @@ import (
 type Keys struct {
 	ContractPublicKey solana.PublicKey
 	AccountPublicKey  solana.PublicKey
+	AccountPrivateKey solana.PrivateKey
 }
 
 type SharedSolanaConfig struct {
@@ -31,7 +33,11 @@ func LoadSolanaKeys() (*SharedSolanaConfig, error) {
 	solanaConfig := &Keys{
 		ContractPublicKey: contractPrivateKey.PublicKey(),
 		AccountPublicKey:  accountPrivateKey.PublicKey(),
+		AccountPrivateKey: accountPrivateKey,
 	}
+
+	log.Printf("[INFO]: using following public key program id: %s", solanaConfig.ContractPublicKey.String())
+	log.Printf("[INFO]: using following public key for signer: %s", solanaConfig.AccountPublicKey.String())
 
 	return &SharedSolanaConfig{
 		Mu:   sync.Mutex{},

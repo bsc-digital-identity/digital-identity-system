@@ -84,11 +84,11 @@ func HandleIncomingMessages(
 
 			var signature solana.Signature
 			select {
-			case signature := <-signatureChan:
+			case signature = <-signatureChan:
 				log.Printf("[INFO]: Saved zkp to blockchain with signature: %s", signature.String())
 			case err := <-errChan:
 				log.Printf("[ERROR]: Unable to save the ZKP to the blockchain %s", err)
-				return
+				continue
 			}
 
 			result := MockZKPVerification(req, signature)
