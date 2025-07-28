@@ -18,7 +18,7 @@ func main() {
 		log.Fatal("Unable to load keypairs for solana")
 	}
 
-	rpcClient := rpc.New("http://127.0.0.1:8899")
+	rpcClient := rpc.New("http://host.docker.internal:8899")
 	solanaClient := &external.SolanaClient{
 		Config:    solanaConfig,
 		RpcClient: rpcClient,

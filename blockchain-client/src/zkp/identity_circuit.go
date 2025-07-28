@@ -17,18 +17,36 @@ type IdentityCircuit struct {
 func (circuit *IdentityCircuit) Define(api frontend.API) error {
 	currentTime := time.Now()
 	currentYear := currentTime.Year()
-	minValidYear := api.Sub(currentYear, 18)
-	api.AssertIsLessOrEqual(circuit.AgeYear, minValidYear)
-
 	currentMonth := int(currentTime.Month())
-	api.AssertIsLessOrEqual(circuit.AgeMonth, currentMonth)
-
 	currentDay := currentTime.Day()
-	api.AssertIsLessOrEqual(circuit.AgeDay, currentDay)
+
+	minValidYear := currentYear - 18
+	minValidYearVar := frontend.Variable(minValidYear)
+	currentMonthVar := frontend.Variable(currentMonth)
+	currentDayVar := frontend.Variable(currentDay)
+
+	api.AssertIsLessOrEqual(circuit.AgeYear, minValidYearVar)
+
+	yearIsMinValid := api.IsZero(api.Sub(circuit.AgeYear, minValidYearVar))
+
+	api.AssertIsLessOrEqual(1, circuit.AgeMonth)
+	api.AssertIsLessOrEqual(circuit.AgeMonth, 12)
+
+	api.AssertIsLessOrEqual(circuit.AgeMonth, api.Select(yearIsMinValid, currentMonthVar, 12))
+
+	monthIsCurrent := api.IsZero(api.Sub(circuit.AgeMonth, currentMonthVar))
 
 	api.AssertIsLessOrEqual(1, circuit.AgeDay)
 	api.AssertIsLessOrEqual(circuit.AgeDay, 31)
-	api.AssertIsLessOrEqual(1, circuit.AgeMonth)
-	api.AssertIsLessOrEqual(circuit.AgeMonth, 12)
+
+	api.AssertIsLessOrEqual(
+		circuit.AgeDay,
+		api.Select(
+			api.And(yearIsMinValid, monthIsCurrent),
+			currentDayVar,
+			31,
+		),
+	)
+
 	return nil
 }

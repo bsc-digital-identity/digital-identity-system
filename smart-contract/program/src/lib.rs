@@ -28,7 +28,7 @@ pub fn process_instruction(
         return Err(ProgramError::IncorrectProgramId);
     }
 
-    let mut zkp_result = ZkpResult::try_from_slice(&account.data.borrow())?;
+    let zkp_result = ZkpResult::try_from_slice(instruction_data)?;
     let mut account_data = account.data.borrow_mut();
     zkp_result.serialize(&mut *account_data)?;
     Ok(())

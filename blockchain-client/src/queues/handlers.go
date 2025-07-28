@@ -3,12 +3,13 @@ package queues
 import (
 	"blockchain-client/src/external"
 	"blockchain-client/src/utils"
+	"blockchain-client/src/zkp"
 	"encoding/json"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/gagliardetto/solana-go"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -68,7 +69,30 @@ func HandleIncomingMessages(
 				continue
 			}
 
-			result := MockZKPVerification(req)
+			// TODO: mock data read from reqesut
+			// replace to read from request
+			zkpResult, err := zkp.CreateZKP(10, 10, 1990)
+			if err != nil {
+				log.Printf("[ERROR]: Failed to create ZKP with user provided data: %s \n error: %s", 10, err)
+				return
+			}
+
+			signatureChan := make(chan solana.Signature)
+			errChan := make(chan error)
+
+			go solanaClient.PublishZkpToSolana(*zkpResult, errChan, signatureChan)
+
+			var signature solana.Signature
+			select {
+			case signature := <-signatureChan:
+				log.Printf("[INFO]: Saved zkp to blockchain with signature: %s", signature.String())
+			case err := <-errChan:
+				log.Printf("[ERROR]: Unable to save the ZKP to the blockchain %s", err)
+				return
+			}
+
+			result := MockZKPVerification(req, signature)
+
 			_ = PublishVerificationResult(ch, "identity", "identity.verified.results", result)
 			log.Printf("Processed ZKP Verification for %s. ProofReference: %s", req.IdentityId, result.ProofReference)
 		}
@@ -77,12 +101,13 @@ func HandleIncomingMessages(
 	waitGroup.Wait()
 }
 
-func MockZKPVerification(req ZeroKnowledgeProofVerificationRequest) ZeroKnowledgeProofVerificationResponse {
-	ref := uuid.NewString()
+func MockZKPVerification(
+	req ZeroKnowledgeProofVerificationRequest,
+	sig solana.Signature) ZeroKnowledgeProofVerificationResponse {
 	return ZeroKnowledgeProofVerificationResponse{
 		IdentityId:     req.IdentityId,
 		IsProofValid:   true,
-		ProofReference: ref,
+		ProofReference: sig.String(),
 		Schema:         req.Schema,
 	}
 }
