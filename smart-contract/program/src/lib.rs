@@ -2,6 +2,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
+    msg,
     program_error::ProgramError,
     pubkey::Pubkey,
 };
@@ -24,10 +25,31 @@ pub fn process_instruction(
     let accounts_iter = &mut accounts.iter();
     let account = next_account_info(accounts_iter)?;
 
-    println!("Instruction data length: {}", instruction_data.len());
+    msg!("Instruction data length: {}", instruction_data.len());
+    msg!("Account data length: {}", account.data.borrow().len());
 
-    let zkp_result = ZkpResult::try_from_slice(instruction_data)?;
+    // Deserialize the ZKP result from instruction data
+    let zkp_result = ZkpResult::try_from_slice(instruction_data)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    
+    msg!("Successfully deserialized ZKP result");
+    msg!("Proof length: {}", zkp_result.proof.len());
+    msg!("Verifying key length: {}", zkp_result.verifying_key.len());
+    msg!("Public witness length: {}", zkp_result.public_witness.len());
+
+    // Serialize to account data
     let mut account_data = account.data.borrow_mut();
-    zkp_result.serialize(&mut *account_data)?;
+    
+    // Check if account has enough space
+    let serialized_size = zkp_result.try_to_vec()?.len();
+    if account_data.len() < serialized_size {
+        msg!("Account data size: {}, required size: {}", account_data.len(), serialized_size);
+        return Err(ProgramError::AccountDataTooSmall);
+    }
+    
+    zkp_result.serialize(&mut *account_data)
+        .map_err(|_| ProgramError::AccountDataTooSmall)?;
+    
+    msg!("Successfully stored ZKP result in account");
     Ok(())
 }

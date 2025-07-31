@@ -16,7 +16,7 @@ type SolanaClient struct {
 	RpcClient *rpc.Client
 }
 
-// add option for the users to be payers instead of owners
+// TODO: add option for the users to be payers instead of owners
 func (sc *SolanaClient) PublishZkpToSolana(
 	zkpResult zkp.ZkpResult,
 	errCh chan error,
@@ -27,27 +27,56 @@ func (sc *SolanaClient) PublishZkpToSolana(
 		return
 	}
 
-	newAccountChannel := make(chan solana.PrivateKey)
-	errorChannel := make(chan error)
+	log.Printf("[INFO]: Serialized ZKP data size: %d bytes", len(zkpData))
 
-	go sc.CreateZkpAccount(zkpData, errorChannel, newAccountChannel)
-
-	var newAccount solana.PrivateKey
-	select {
-	case newAccount = <-newAccountChannel:
-		log.Printf("[INFO]: Created new account: %s", newAccount.PublicKey().String())
-	case err := <-errorChannel:
+	err = sc.CreateAndPopulateZkpAccount(zkpData, errCh, sigCh)
+	if err != nil {
 		errCh <- err
 		return
 	}
+}
 
-	// lock mutex to read correct values at current time
+// creates new account and stores zkp data for future retrival
+func (sc *SolanaClient) CreateAndPopulateZkpAccount(
+	zkpData []byte,
+	errCh chan error,
+	sigCh chan solana.Signature) error {
+
+	space := calculateRequiredAccountSpace(zkpData)
+	log.Printf("[INFO]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
+
+	rent, err := sc.RpcClient.GetMinimumBalanceForRentExemption(
+		context.Background(),
+		space,
+		rpc.CommitmentFinalized,
+	)
+	if err != nil {
+		return err
+	}
+	log.Printf("[INFO]: Required rent for account: %d lamports", rent)
+
+	newAccount, err := solana.NewRandomPrivateKey()
+	if err != nil {
+		return err
+	}
+	log.Printf("[INFO]: Generated new account: %s", newAccount.PublicKey().String())
+
+	// mutex lock to read correct values at current time
 	sc.Config.Mu.Lock()
+
+	createAccountInstruction := system.NewCreateAccountInstruction(
+		rent,
+		space,
+		sc.Config.Keys.ContractPublicKey,
+		sc.Config.Keys.AccountPublicKey,
+		newAccount.PublicKey(),
+	).Build()
+
 	accounts := []*solana.AccountMeta{
 		solana.NewAccountMeta(newAccount.PublicKey(), true, true),
 	}
 
-	instruction := solana.NewInstruction(
+	zkpInstruction := solana.NewInstruction(
 		sc.Config.Keys.ContractPublicKey,
 		accounts,
 		zkpData,
@@ -57,19 +86,16 @@ func (sc *SolanaClient) PublishZkpToSolana(
 
 	latest, err := sc.RpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
 	if err != nil {
-		errCh <- err
-		return
+		return err
 	}
 
 	tx, err := solana.NewTransaction(
-		[]solana.Instruction{instruction},
+		[]solana.Instruction{createAccountInstruction, zkpInstruction},
 		latest.Value.Blockhash,
-		// Here replace with actual payer
 		solana.TransactionPayer(sc.Config.Keys.AccountPublicKey),
 	)
 	if err != nil {
-		errCh <- err
-		return
+		return err
 	}
 
 	_, err = tx.Sign(func(pk solana.PublicKey) *solana.PrivateKey {
@@ -81,10 +107,8 @@ func (sc *SolanaClient) PublishZkpToSolana(
 		}
 		return nil
 	})
-
 	if err != nil {
-		errCh <- err
-		return
+		return err
 	}
 
 	transactionSignature, err := sc.RpcClient.SendTransactionWithOpts(
@@ -96,11 +120,14 @@ func (sc *SolanaClient) PublishZkpToSolana(
 		},
 	)
 	if err != nil {
-		errCh <- err
-		return
+		log.Printf("[ERROR]: Failed to send combined transaction: %v", err)
+		log.Printf("[DEBUG]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
+		return err
 	}
 
+	log.Printf("[INFO]: Successfully sent combined transaction: %s", transactionSignature)
 	sigCh <- transactionSignature
+	return nil
 }
 
 func (sc *SolanaClient) CreateZkpAccount(
@@ -108,6 +135,9 @@ func (sc *SolanaClient) CreateZkpAccount(
 	errCh chan error,
 	accountCh chan solana.PrivateKey) {
 	space := calculateRequiredAccountSpace(zkpData)
+
+	log.Printf("[INFO]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
+
 	rent, err := sc.RpcClient.GetMinimumBalanceForRentExemption(
 		context.Background(),
 		space,
@@ -118,6 +148,8 @@ func (sc *SolanaClient) CreateZkpAccount(
 		return
 	}
 
+	log.Printf("[INFO]: Required rent for account: %d lamports", rent)
+
 	newAccount, err := solana.NewRandomPrivateKey()
 	if err != nil {
 		errCh <- err
@@ -126,7 +158,7 @@ func (sc *SolanaClient) CreateZkpAccount(
 
 	createAccountInstruction := system.NewCreateAccountInstruction(
 		rent,
-		uint64(space),
+		space,
 		sc.Config.Keys.ContractPublicKey,
 		sc.Config.Keys.AccountPublicKey,
 		newAccount.PublicKey(),
@@ -171,19 +203,41 @@ func (sc *SolanaClient) CreateZkpAccount(
 		},
 	)
 	if err != nil {
+		log.Printf("[ERROR]: Failed to create account: %v", err)
+		log.Printf("[DEBUG]: Requested space: %d bytes, rent: %d lamports", space, rent)
 		errCh <- err
 		return
 	}
+
+	log.Printf("[INFO]: Successfully created account with %d bytes of space", space)
 
 	accountCh <- newAccount
 }
 
 func calculateRequiredAccountSpace(data []byte) uint64 {
-	totalSize := len(data) + 8
+	// calculate space to store whole ZKP data
+	// with enough buffer for it to fit with metadata
+	dataSize := len(data)
 
+	var totalSize int
+	if dataSize > 10000 {
+		totalSize = int(float64(dataSize) * 1.5)
+	} else if dataSize > 1000 {
+		totalSize = dataSize + 2048
+	} else {
+		totalSize = dataSize + 1024
+	}
+
+	// round to 8 bytes
 	if totalSize%8 != 0 {
 		totalSize += 8 - (totalSize % 8)
 	}
 
+	// minimum is 2048
+	if totalSize < 2048 {
+		totalSize = 2048
+	}
+
+	log.Printf("[DEBUG]: Data size: %d, calculated space: %d", dataSize, totalSize)
 	return uint64(totalSize)
 }
