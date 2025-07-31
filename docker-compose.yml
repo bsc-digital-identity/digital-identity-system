@@ -1,7 +1,7 @@
 services:
   rev-proxy:
     build:
-      context: ./rev-proxy
+      context: ./system/rev-proxy
     container_name: identity-reverse-proxy
     ports:
       - "9000:80"
@@ -12,7 +12,7 @@ services:
 
   api:
     build:
-      context: ./api
+      context: ./system/api
     container_name: identity-api
     working_dir: /root/app
     environment:
@@ -24,11 +24,11 @@ services:
       - rabbitmq
     restart: unless-stopped
     volumes:
-      - ./api/sqlite:/root/app/sqlite
+      - ./system/api/sqlite:/root/app/sqlite
 
   blockchain-client:
     build:
-      context: ./blockchain-client
+      context: ./system/blockchain-client
     container_name: identity-blockchain-client
     depends_on:
       - api
@@ -37,10 +37,10 @@ services:
 
   rabbitmq:
     build:
-      context: ./rabbitmq
+      context: ./system/rabbitmq
     container_name: identity-rabbitmq
     volumes:
-      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./system/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     ports:
       - "5672:5672"
       - "15672:15672"
