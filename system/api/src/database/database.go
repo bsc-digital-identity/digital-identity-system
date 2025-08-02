@@ -2,29 +2,31 @@ package database
 
 import (
 	"api/src/model"
-	"log"
+	"pkg-common/logger"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func ConnectToDatabase(connectionString string) *gorm.DB {
-	log.Printf("Establishing connection to development database: %s", connectionString)
+	defaultLogger := logger.New()
+
+	defaultLogger.Infof("Establishing connection to development database: %s", connectionString)
 
 	db, err := gorm.Open(sqlite.Open(connectionString), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Cannot establish database connection: ", err)
+		defaultLogger.Fatal(err, "Cannot establish database connection")
 	}
 
-	log.Println("Running migrations for tables")
+	defaultLogger.Info("Running migrations for tables")
 	err = db.AutoMigrate(
 		&model.Identity{},
 		&model.VerifiedSchema{},
 		&model.ZeroKnowledgeProof{})
 	if err != nil {
-		log.Fatal("Migrating database failed: ", err)
+		defaultLogger.Fatal(err, "Migrating database failed")
 	}
 
-	log.Println("All tables created (or already exist).")
+	defaultLogger.Info("All tables created (or already exist).")
 	return db
 }

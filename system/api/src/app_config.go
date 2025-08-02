@@ -3,11 +3,25 @@ package main
 import (
 	"api/src/model"
 	"encoding/json"
-	"log"
+	"pkg-common/logger"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+type ApiConfigJson struct {
+	loggerConf logger.LoggerConfigJson `json:"logger"`
+}
+
+type ApiConfig struct {
+	LoggerConf logger.LoggerConfig
+}
+
+func (acj *ApiConfigJson) ConvertToDomain() ApiConfig {
+	return ApiConfig{
+		LoggerConf: acj.loggerConf.ConvertToDomain(),
+	}
+}
 
 func InitializeDev(db *gorm.DB) error {
 	// Example: Insert admin if not exists
@@ -19,7 +33,7 @@ func InitializeDev(db *gorm.DB) error {
 
 	result := db.FirstOrCreate(&admin)
 	if result.Error != nil {
-		log.Printf("Error inserting admin: %v", result.Error)
+		logger.Default().Error(result.Error, "Error inserting admin")
 	}
 
 	constraint := model.Constraint[int]{
@@ -34,7 +48,7 @@ func InitializeDev(db *gorm.DB) error {
 
 	serialized_schema, err := json.Marshal(schema)
 	if err != nil {
-		log.Printf("Error when serializing: %s", err)
+		logger.Default().Error(err, "Error when serializing")
 	}
 
 	schema_id, _ := uuid.NewRandom()
@@ -47,10 +61,10 @@ func InitializeDev(db *gorm.DB) error {
 	result = db.FirstOrCreate(&verifiable_schema)
 
 	if result.Error != nil {
-		log.Printf("Error when inserting schema: %s", result.Error)
+		logger.Default().Error(result.Error, "Error when inserting schema")
 	}
 
-	log.Printf("Created admin user with id: %s", admin_id.String())
-	log.Printf("Created schema with Age constraint: %s", schema_id.String())
+	logger.Default().Infof("Created admin user with id: %s", admin_id.String())
+	logger.Default().Infof("Created schema with Age constraint: %s", schema_id.String())
 	return nil
 }

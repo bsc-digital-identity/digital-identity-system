@@ -2,7 +2,7 @@ package zkp
 
 import (
 	"api/src/model"
-	"log"
+	"pkg-common/logger"
 )
 
 // Service interface
@@ -22,8 +22,9 @@ func NewZkpService(repo ZkpRepository) ZkpService {
 
 // ProcessVerificationResult saves ZKP result into DB
 func (s *zkpService) ProcessVerificationResult(resp model.ZeroKnowledgeProofVerificationResponse) error {
+	zkpLogger := logger.Default()
 	if !resp.IsProofValid {
-		log.Printf("Invalid proof, not saving: %s (error: %s)", resp.IdentityId, resp.Error)
+		zkpLogger.Warnf("Invalid proof, not saving: %s (error: %s)", resp.IdentityId, resp.Error)
 		return nil
 	}
 
@@ -49,6 +50,6 @@ func (s *zkpService) ProcessVerificationResult(resp model.ZeroKnowledgeProofVeri
 		return err
 	}
 
-	log.Printf("Saved ZKP proof for identity: %s, schema: %s", resp.IdentityId, schema.SchemaId)
+	zkpLogger.Infof("Saved ZKP proof for identity: %s, schema: %s", resp.IdentityId, schema.SchemaId)
 	return nil
 }

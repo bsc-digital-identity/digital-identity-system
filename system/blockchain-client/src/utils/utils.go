@@ -1,9 +1,9 @@
 package utils
 
-import "log"
+import "pkg-common/logger"
 
 func FailOnError(err error, msg string) {
 	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
+		logger.Default().Fatal(err, msg)
 	}
 }

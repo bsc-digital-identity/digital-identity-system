@@ -4,7 +4,7 @@ import (
 	"api/src/model"
 	"api/src/queues"
 	"encoding/json"
-	"log"
+	"pkg-common/logger"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -25,25 +25,26 @@ func NewZeroKnowledgeProofHandler(service ZkpService, consumer *queues.RabbitCon
 }
 
 func (h *ZeroKnowledgeProofHandler) listenResultsQueue() {
+	zkpLogger := logger.Default()
 	err := h.consumer.StartConsume(func(d amqp.Delivery) {
 		var resp model.ZeroKnowledgeProofVerificationResponse
 		if err := json.Unmarshal(d.Body, &resp); err != nil {
-			log.Printf("Failed to unmarshal result: %v", err)
+			zkpLogger.Errorf(err, "Failed to unmarshal result")
 			return
 		}
 		// Save to DB, update state, etc
 		if err := h.service.ProcessVerificationResult(resp); err != nil {
-			log.Printf("Failed to process verification result: %v", err)
+			zkpLogger.Errorf(err, "Failed to process verification result")
 		} else {
-			log.Printf("Processed ZKP verification result for identity: %s", resp.IdentityId)
-			log.Printf(
+			zkpLogger.Infof("Processed ZKP verification result for identity: %s", resp.IdentityId)
+			zkpLogger.Infof(
 				"ZKP Verification Result: identity_id=%s | is_proof_valid=%v | proof_reference=%s | schema=%s | error=%s",
 				resp.IdentityId, resp.IsProofValid, resp.ProofReference, resp.Schema, resp.Error,
 			)
 		}
 	})
 	if err != nil {
-		log.Printf("Failed to register result queue consumer: %v", err)
+		zkpLogger.Errorf(err, "Failed to register result queue consumer")
 	}
-	log.Println("Listening for ZKP verification results...")
+	zkpLogger.Info("Listening for ZKP verification results...")
 }
