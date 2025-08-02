@@ -5,6 +5,7 @@ services:
     container_name: identity-reverse-proxy
     ports:
       - "9000:80"
+      - "5672:5671"
     depends_on:
       - api
       - rabbitmq

@@ -36,10 +36,11 @@ func main() {
 			{"version", "1.0.0"},
 		},
 	})
+	defaultLogger := logger.Default()
 
 	apiConfigJson, err := utilities.ReadConfig[ApiConfigJson]("config.json")
 	if err != nil {
-		logger.Default().Fatalf(err, "Loading config failed")
+		defaultLogger.Fatalf(err, "Loading config failed")
 	}
 	apiConfig := apiConfigJson.ConvertToDomain()
 

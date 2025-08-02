@@ -2,10 +2,10 @@ package queues
 
 import (
 	"blockchain-client/src/external"
-	"blockchain-client/src/utils"
 	"blockchain-client/src/zkp"
 	"encoding/json"
 	"pkg-common/logger"
+	"pkg-common/utilities"
 	"sync"
 	"time"
 
@@ -46,7 +46,7 @@ func HandleIncomingMessages(
 		false,       // no-wait
 		nil,         // args
 	)
-	utils.FailOnError(err, "Failed to register a consumer")
+	utilities.FailOnError(err, "Failed to register a consumer")
 
 	handlerLogger := logger.Default()
 	handlerLogger.Infof("Waiting for messages in queue: %s", queueName)
@@ -74,7 +74,7 @@ func HandleIncomingMessages(
 			// replace to read from request
 			zkpResult, err := zkp.CreateZKP(10, 10, 1990)
 			if err != nil {
-				handlerLogger.Errorf(err, "[ERROR]: Failed to create ZKP with user provided data: %d", 10)
+				handlerLogger.Errorf(err, "Failed to create ZKP with user provided data: %d", 10)
 				return
 			}
 
@@ -86,9 +86,9 @@ func HandleIncomingMessages(
 			var signature solana.Signature
 			select {
 			case signature = <-signatureChan:
-				handlerLogger.Infof("[INFO]: Saved zkp to blockchain with signature: %s", signature.String())
+				handlerLogger.Infof("Saved zkp to blockchain with signature: %s", signature.String())
 			case err := <-errChan:
-				handlerLogger.Errorf(err, "[ERROR]: Unable to save the ZKP to the blockchain")
+				handlerLogger.Errorf(err, "Unable to save the ZKP to the blockchain")
 				continue
 			}
 
