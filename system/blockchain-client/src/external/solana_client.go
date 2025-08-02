@@ -4,7 +4,7 @@ import (
 	"blockchain-client/src/config"
 	"blockchain-client/src/zkp"
 	"context"
-	"log"
+	"pkg-common/logger"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/programs/system"
@@ -27,7 +27,8 @@ func (sc *SolanaClient) PublishZkpToSolana(
 		return
 	}
 
-	log.Printf("[INFO]: Serialized ZKP data size: %d bytes", len(zkpData))
+	solanaLogger := logger.Default()
+	solanaLogger.Infof("[INFO]: Serialized ZKP data size: %d bytes", len(zkpData))
 
 	err = sc.CreateAndPopulateZkpAccount(zkpData, errCh, sigCh)
 	if err != nil {
@@ -42,8 +43,9 @@ func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 	errCh chan error,
 	sigCh chan solana.Signature) error {
 
+	solanaLogger := logger.Default()
 	space := calculateRequiredAccountSpace(zkpData)
-	log.Printf("[INFO]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
+	solanaLogger.Infof("[INFO]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
 
 	rent, err := sc.RpcClient.GetMinimumBalanceForRentExemption(
 		context.Background(),
@@ -53,13 +55,13 @@ func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 	if err != nil {
 		return err
 	}
-	log.Printf("[INFO]: Required rent for account: %d lamports", rent)
+	solanaLogger.Infof("[INFO]: Required rent for account: %d lamports", rent)
 
 	newAccount, err := solana.NewRandomPrivateKey()
 	if err != nil {
 		return err
 	}
-	log.Printf("[INFO]: Generated new account: %s", newAccount.PublicKey().String())
+	solanaLogger.Infof("[INFO]: Generated new account: %s", newAccount.PublicKey().String())
 
 	// mutex lock to read correct values at current time
 	sc.Config.Mu.Lock()
@@ -120,12 +122,12 @@ func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 		},
 	)
 	if err != nil {
-		log.Printf("[ERROR]: Failed to send combined transaction: %v", err)
-		log.Printf("[DEBUG]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
+		solanaLogger.Errorf(err, "[ERROR]: Failed to send combined transaction")
+		solanaLogger.Infof("[DEBUG]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
 		return err
 	}
 
-	log.Printf("[INFO]: Successfully sent combined transaction: %s", transactionSignature)
+	solanaLogger.Infof("[INFO]: Successfully sent combined transaction: %s", transactionSignature)
 	sigCh <- transactionSignature
 	return nil
 }
@@ -134,9 +136,10 @@ func (sc *SolanaClient) CreateZkpAccount(
 	zkpData []byte,
 	errCh chan error,
 	accountCh chan solana.PrivateKey) {
+	solanaLogger := logger.Default()
 	space := calculateRequiredAccountSpace(zkpData)
 
-	log.Printf("[INFO]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
+	solanaLogger.Infof("[INFO]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
 
 	rent, err := sc.RpcClient.GetMinimumBalanceForRentExemption(
 		context.Background(),
@@ -148,7 +151,7 @@ func (sc *SolanaClient) CreateZkpAccount(
 		return
 	}
 
-	log.Printf("[INFO]: Required rent for account: %d lamports", rent)
+	solanaLogger.Infof("[INFO]: Required rent for account: %d lamports", rent)
 
 	newAccount, err := solana.NewRandomPrivateKey()
 	if err != nil {
@@ -203,13 +206,13 @@ func (sc *SolanaClient) CreateZkpAccount(
 		},
 	)
 	if err != nil {
-		log.Printf("[ERROR]: Failed to create account: %v", err)
-		log.Printf("[DEBUG]: Requested space: %d bytes, rent: %d lamports", space, rent)
+		solanaLogger.Errorf(err, "[ERROR]: Failed to create account")
+		solanaLogger.Infof("[DEBUG]: Requested space: %d bytes, rent: %d lamports", space, rent)
 		errCh <- err
 		return
 	}
 
-	log.Printf("[INFO]: Successfully created account with %d bytes of space", space)
+	solanaLogger.Infof("[INFO]: Successfully created account with %d bytes of space", space)
 
 	accountCh <- newAccount
 }
@@ -238,6 +241,6 @@ func calculateRequiredAccountSpace(data []byte) uint64 {
 		totalSize = 2048
 	}
 
-	log.Printf("[DEBUG]: Data size: %d, calculated space: %d", dataSize, totalSize)
+	logger.Default().Infof("[DEBUG]: Data size: %d, calculated space: %d", dataSize, totalSize)
 	return uint64(totalSize)
 }

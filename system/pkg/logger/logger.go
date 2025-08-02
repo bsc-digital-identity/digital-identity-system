@@ -1,122 +1,118 @@
 package logger
 
 import (
+	"context"
 	"io"
 	"os"
+	"time"
+
+	"github.com/rs/zerolog"
 )
-
-type LogLevel int
-
-const (
-	DEBUG LogLevel = iota
-	INFO
-	WARN
-	ERROR
-	FATAL
-)
-
-func (l LogLevel) String() string {
-	switch l {
-	case DEBUG:
-		return "DEBUG"
-	case INFO:
-		return "INFO"
-	case WARN:
-		return "WARNING"
-	case ERROR:
-		return "ERROR"
-	case FATAL:
-		return "FATAL"
-	default:
-		return "UNKNOW"
-	}
-}
-
-const (
-	Red    = "\033[31m"
-	Green  = "\033[32m"
-	Yellow = "\033[33m"
-	Blue   = "\033[34m"
-	Purple = "\033[35m"
-	Cyan   = "\033[36m"
-	White  = "\033[37m"
-	Reset  = "\033[0m"
-)
-
-type LoggerConfig struct {
-	MinLevel       LogLevel
-	Output         io.Writer
-	EnableColors   bool
-	EnableLocation bool
-	EnableTime     bool
-	ColorMapping   map[LogLevel]string
-	TimeFormat     string
-	Location       string
-}
 
 type Logger struct {
-	level        LogLevel
-	output       io.Writer
-	colorMapping map[LogLevel]string
-	timeFormat   string
-	location     string
+	zl zerolog.Logger
 }
 
-func DefaultConfig() LoggerConfig {
-	return LoggerConfig{
-		MinLevel:       INFO,
-		Output:         os.Stdout,
-		EnableColors:   true,
-		EnableLocation: true,
-		EnableTime:     true,
-		TimeFormat:     "01-01-2025 18:00:00",
-		Location:       "",
-	}
+func New() *Logger {
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+
+	logger := zerolog.New(os.Stdout).
+		With().
+		Timestamp().
+		Caller().
+		Logger()
+
+	return &Logger{zl: logger}
 }
 
-func New(config LoggerConfig) *Logger {
-	if config.Output == nil {
-		config.Output = os.Stdout
+func NewFromConfig(cfg LoggerConfig) *Logger {
+	if cfg.LogLevel == zerolog.NoLevel {
+		cfg.LogLevel = zerolog.InfoLevel
 	}
 
-	if !config.EnableColors {
-		config.ColorMapping = nil
-	}
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.CallerSkipFrameCount = 3
 
-	if !config.EnableTime {
-		config.TimeFormat = ""
-	}
+	logger := zerolog.New(os.Stdout).
+		With().
+		Timestamp().
+		Caller().
+		Logger().
+		Level(zerolog.Level(cfg.LogLevel))
 
-	if !config.EnableLocation {
-		config.Location = ""
-	}
-
-	return &Logger{
-		level:        config.MinLevel,
-		output:       config.Output,
-		colorMapping: config.ColorMapping,
-		timeFormat:   config.TimeFormat,
-		location:     config.Location,
-	}
+	return &Logger{zl: logger}
 }
 
-func NewDeafult() *Logger {
-	return New(DefaultConfig())
+func (l *Logger) WithOutput(w io.Writer) *Logger {
+	l.zl = l.zl.Output(w)
+	return l
 }
 
-func NewWithLocation(config LoggerConfig, location string) *Logger {
-	config.Location = location
-	return New(config)
+func (l *Logger) WithLevel(level zerolog.Level) *Logger {
+	l.zl = l.zl.Level(level)
+	return l
 }
 
-func (l *Logger) getMessageColor(level LogLevel) string {
-	if l.colorMapping != nil {
-		return l.colorMapping[level]
-	}
-
-	return ""
+func (l *Logger) WithContext(ctx context.Context) *Logger {
+	return &Logger{zl: l.zl.With().Logger()}
 }
 
-// TODO: finish if it has value
-// custom unfified logger
-//func formatMessage(level)
+func (l *Logger) With() zerolog.Context {
+	return l.zl.With()
+}
+
+func (l *Logger) Debug(msg string) {
+	l.zl.Debug().Msg(msg)
+}
+
+func (l *Logger) Debugf(format string, v ...interface{}) {
+	l.zl.Debug().Msgf(format, v...)
+}
+
+func (l *Logger) Info(msg string) {
+	l.zl.Info().Msg(msg)
+}
+
+func (l *Logger) Infof(format string, v ...interface{}) {
+	l.zl.Info().Msgf(format, v...)
+}
+
+func (l *Logger) Warn(msg string) {
+	l.zl.Warn().Msg(msg)
+}
+
+func (l *Logger) Warnf(format string, v ...interface{}) {
+	l.zl.Warn().Msgf(format, v...)
+}
+
+func (l *Logger) Error(err error, msg string) {
+	l.zl.Error().Err(err).Msg(msg)
+}
+
+func (l *Logger) Errorf(err error, format string, v ...interface{}) {
+	l.zl.Error().Err(err).Msgf(format, v...)
+}
+
+func (l *Logger) Fatal(err error, msg string) {
+	l.zl.Fatal().Err(err).Msg(msg)
+}
+
+func (l *Logger) Fatalf(err error, format string, v ...interface{}) {
+	l.zl.Fatal().Err(err).Msgf(format, v...)
+}
+
+func (l *Logger) Panic(err error, msg string) {
+	l.zl.Panic().Err(err).Msg(msg)
+}
+
+func (l *Logger) Panicf(err error, format string, v ...interface{}) {
+	l.zl.Panic().Err(err).Msgf(format, v...)
+}
+
+func (l *Logger) Log(level zerolog.Level, msg string) {
+	l.zl.WithLevel(level).Msg(msg)
+}
+
+func (l *Logger) Logf(level zerolog.Level, format string, v ...interface{}) {
+	l.zl.WithLevel(level).Msgf(format, v...)
+}

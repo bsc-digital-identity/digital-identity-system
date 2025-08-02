@@ -5,17 +5,28 @@ import (
 	"blockchain-client/src/external"
 	"blockchain-client/src/queues"
 	"blockchain-client/src/utils"
-	"log"
+	"pkg-common/logger"
 
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
 func main() {
-	//err := godotenv.Load()
+	// Initialize logger
+	logger.InitDefaultLogger(logger.GlobalLoggerConfig{
+		Args: []struct {
+			Key   string
+			Value string
+		}{
+			{"application", "blockchain-client"},
+			{"version", "1.0.0"},
+		},
+	})
+
+	mainLogger := logger.Default()
 
 	solanaConfig, err := config.LoadSolanaKeys()
 	if err != nil {
-		log.Fatal("Unable to load keypairs for solana")
+		mainLogger.Fatal(err, "Unable to load keypairs for solana")
 	}
 
 	rpcClient := rpc.New("http://host.docker.internal:8899")
@@ -40,6 +51,8 @@ func main() {
 
 	// 4. Start consuming from the job queue ("identity.verified")
 	go queues.HandleIncomingMessages(solanaClient, ch, "identity.verified", "")
+
+	mainLogger.Info("Blockchain client started and listening for messages")
 
 	// 5. Keep alive
 	select {}

@@ -5,7 +5,7 @@ import (
 	"blockchain-client/src/utils"
 	"blockchain-client/src/zkp"
 	"encoding/json"
-	"log"
+	"pkg-common/logger"
 	"sync"
 	"time"
 
@@ -33,7 +33,7 @@ func HandleIncomingMessages(
 	consumerTag string) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("[%s] Recovered from panic for consumer: %s, %v\n", queueName, consumerTag, r)
+			logger.Default().Errorf(nil, "[%s] Recovered from panic for consumer: %s, %v", queueName, consumerTag, r)
 		}
 	}()
 
@@ -48,14 +48,15 @@ func HandleIncomingMessages(
 	)
 	utils.FailOnError(err, "Failed to register a consumer")
 
-	log.Printf("Waiting for messages in queue: %s", queueName)
+	handlerLogger := logger.Default()
+	handlerLogger.Infof("Waiting for messages in queue: %s", queueName)
 	var waitGroup sync.WaitGroup
 
 	waitGroup.Add(1)
 	go func() {
 		defer waitGroup.Done()
 		for d := range msgs {
-			log.Printf("[%s] %s", queueName, d.Body)
+			handlerLogger.Infof("[%s] %s", queueName, d.Body)
 
 			var req ZeroKnowledgeProofVerificationRequest
 			err := json.Unmarshal(d.Body, &req)
@@ -73,7 +74,7 @@ func HandleIncomingMessages(
 			// replace to read from request
 			zkpResult, err := zkp.CreateZKP(10, 10, 1990)
 			if err != nil {
-				log.Printf("[ERROR]: Failed to create ZKP with user provided data: %s \n error: %s", 10, err)
+				handlerLogger.Errorf(err, "[ERROR]: Failed to create ZKP with user provided data: %d", 10)
 				return
 			}
 
@@ -85,16 +86,16 @@ func HandleIncomingMessages(
 			var signature solana.Signature
 			select {
 			case signature = <-signatureChan:
-				log.Printf("[INFO]: Saved zkp to blockchain with signature: %s", signature.String())
+				handlerLogger.Infof("[INFO]: Saved zkp to blockchain with signature: %s", signature.String())
 			case err := <-errChan:
-				log.Printf("[ERROR]: Unable to save the ZKP to the blockchain %s", err)
+				handlerLogger.Errorf(err, "[ERROR]: Unable to save the ZKP to the blockchain")
 				continue
 			}
 
 			result := MockZKPVerification(req, signature)
 
 			_ = PublishVerificationResult(ch, "identity", "identity.verified.results", result)
-			log.Printf("Processed ZKP Verification for %s. ProofReference: %s", req.IdentityId, result.ProofReference)
+			handlerLogger.Infof("Processed ZKP Verification for %s. ProofReference: %s", req.IdentityId, result.ProofReference)
 		}
 	}()
 

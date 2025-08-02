@@ -2,11 +2,11 @@ FROM golang:1.24.5-alpine as builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY blockchain-client/go* ./
 
 RUN go mod download
 
-COPY /src ./src
+COPY blockchain-client/src ./src
 
 RUN go build -o blockchain-client ./src
 
@@ -19,7 +19,7 @@ COPY --from=builder /app ./app
 WORKDIR /root/app
 
 # solana keypairs
-COPY identity_app-keypair.json id.json ./
+COPY blockchain-client/*json ./
 
 EXPOSE 8001
 

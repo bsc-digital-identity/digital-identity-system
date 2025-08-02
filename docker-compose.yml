@@ -12,27 +12,24 @@ services:
 
   api:
     build:
-      context: ./system/api
+      context: ./system
+      dockerfile: api/Dockerfile
     container_name: identity-api
     working_dir: /root/app
     environment:
       - DB_CONNECTION_STRING=sqlite/DigitalIdentity.db
       - ENV_TYPE=dev
-    ports:
+    expose:
       - "8080:8080"
-    depends_on:
-      - rabbitmq
     restart: unless-stopped
     volumes:
       - ./system/api/sqlite:/root/app/sqlite
 
   blockchain-client:
     build:
-      context: ./system/blockchain-client
+      context: ./system
+      dockerfile: blockchain-client/Dockerfile
     container_name: identity-blockchain-client
-    depends_on:
-      - api
-      - rabbitmq
     restart: unless-stopped
 
   rabbitmq:
@@ -41,7 +38,7 @@ services:
     container_name: identity-rabbitmq
     volumes:
       - ./system/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-    ports:
+    expose:
       - "5672:5672"
       - "15672:15672"
     restart: unless-stopped

@@ -5,9 +5,10 @@ import (
 	"api/src/queues"
 	"api/src/zkp"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"pkg-common/logger"
+	"pkg-common/utilities"
 
 	"github.com/gin-gonic/gin"
 
@@ -26,8 +27,25 @@ const (
 )
 
 func main() {
+	logger.InitDefaultLogger(logger.GlobalLoggerConfig{
+		Args: []struct {
+			Key   string
+			Value string
+		}{
+			{"application", "api"},
+			{"version", "1.0.0"},
+		},
+	})
+
+	apiConfigJson, err := utilities.ReadConfig[ApiConfigJson]("config.json")
+	if err != nil {
+		logger.Default().Fatalf(err, "Loading config failed")
+	}
+	apiConfig := apiConfigJson.ConvertToDomain()
+
+	apiLogger := logger.NewFromConfig(apiConfig.LoggerConf)
 	// Setup DB
-	isDev := Ternary(os.Getenv("ENV_TYPE") == string(Dev), true, false)
+	isDev := utilities.Ternary(os.Getenv("ENV_TYPE") == string(Dev), true, false)
 
 	// Ensure the sqlite directory exists before using it
 	os.MkdirAll("./sqlite", 0755)
@@ -38,7 +56,7 @@ func main() {
 	}
 	db := database.ConnectToDatabase(dbConn)
 	if db == nil {
-		log.Fatal("Database connection failed")
+		apiLogger.Fatal(nil, "Database connection failed")
 	}
 
 	if isDev {
@@ -51,19 +69,19 @@ func main() {
 		"identity", "identity.verified", "identity.verified",
 	)
 	if err != nil {
-		log.Fatalf("RabbitMQ setup error: %v", err)
+		apiLogger.Fatalf(err, "RabbitMQ setup error")
 	}
 	defer rabbitPublisher.Close()
 
 	// Ensure the results queue exists
 	resultsQueue := "identity.verified.results"
 	if err := rabbitPublisher.EnsureResultsQueue(resultsQueue); err != nil {
-		log.Fatalf("Failed to declare results queue: %v", err)
+		apiLogger.Fatalf(err, "Failed to declare results queue")
 	}
 
 	rabbitConsumer, err := queues.NewRabbitConsumer(rabbitPublisher.Conn, resultsQueue)
 	if err != nil {
-		log.Fatalf("Failed to setup result consumer: %v", err)
+		apiLogger.Fatalf(err, "Failed to setup result consumer: %v")
 	}
 
 	// Init identityRepo / identityService / identityHandler
@@ -79,7 +97,7 @@ func main() {
 	identity.RegisterIdentityRoutes(api, identityHandler)
 	_ = zkpHandler // just to avoid unused var warning, but identityHandler runs in background
 
-	log.Println("server running at 0.0.0.0:8080")
+	apiLogger.Info("server running at 0.0.0.0:8080")
 	r.Run("0.0.0.0:8080")
 
 }
