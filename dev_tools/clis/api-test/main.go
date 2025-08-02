@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-const defaultBase = "http://localhost:8080"
+const defaultBase = "http://localhost:9000"
 
 func main() {
 	if len(os.Args) < 2 {
