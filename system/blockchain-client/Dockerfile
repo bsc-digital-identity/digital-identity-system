@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY blockchain-client/go* ./
 
+COPY ../pkg ./../pkg
+
 RUN go mod download
 
 COPY blockchain-client/src ./src

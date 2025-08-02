@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"pkg-common/logger"
 	"sync"
 
 	"github.com/gagliardetto/solana-go"
@@ -36,8 +36,8 @@ func LoadSolanaKeys() (*SharedSolanaConfig, error) {
 		AccountPrivateKey: accountPrivateKey,
 	}
 
-	log.Printf("[INFO]: using following public key program id: %s", solanaConfig.ContractPublicKey.String())
-	log.Printf("[INFO]: using following public key for signer: %s", solanaConfig.AccountPublicKey.String())
+	logger.Default().Debugf("Using following public key program id: %s", solanaConfig.ContractPublicKey.String())
+	logger.Default().Debugf("Using following public key for signer: %s", solanaConfig.AccountPublicKey.String())
 
 	return &SharedSolanaConfig{
 		Mu:   sync.Mutex{},

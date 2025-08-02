@@ -28,24 +28,20 @@ func (sc *SolanaClient) PublishZkpToSolana(
 	}
 
 	solanaLogger := logger.Default()
-	solanaLogger.Infof("[INFO]: Serialized ZKP data size: %d bytes", len(zkpData))
+	solanaLogger.Infof("Serialized ZKP data size: %d bytes", len(zkpData))
 
-	err = sc.CreateAndPopulateZkpAccount(zkpData, errCh, sigCh)
-	if err != nil {
-		errCh <- err
-		return
-	}
+	sc.CreateAndPopulateZkpAccount(zkpData, errCh, sigCh)
 }
 
 // creates new account and stores zkp data for future retrival
 func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 	zkpData []byte,
 	errCh chan error,
-	sigCh chan solana.Signature) error {
+	sigCh chan solana.Signature) {
 
 	solanaLogger := logger.Default()
 	space := calculateRequiredAccountSpace(zkpData)
-	solanaLogger.Infof("[INFO]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
+	solanaLogger.Infof("ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
 
 	rent, err := sc.RpcClient.GetMinimumBalanceForRentExemption(
 		context.Background(),
@@ -53,15 +49,17 @@ func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 		rpc.CommitmentFinalized,
 	)
 	if err != nil {
-		return err
+		errCh <- err
+		return
 	}
-	solanaLogger.Infof("[INFO]: Required rent for account: %d lamports", rent)
+	solanaLogger.Infof("Required rent for account: %d lamports", rent)
 
 	newAccount, err := solana.NewRandomPrivateKey()
 	if err != nil {
-		return err
+		errCh <- err
+		return
 	}
-	solanaLogger.Infof("[INFO]: Generated new account: %s", newAccount.PublicKey().String())
+	solanaLogger.Infof("Generated new account: %s", newAccount.PublicKey().String())
 
 	// mutex lock to read correct values at current time
 	sc.Config.Mu.Lock()
@@ -88,7 +86,8 @@ func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 
 	latest, err := sc.RpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
 	if err != nil {
-		return err
+		errCh <- err
+		return
 	}
 
 	tx, err := solana.NewTransaction(
@@ -97,7 +96,8 @@ func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 		solana.TransactionPayer(sc.Config.Keys.AccountPublicKey),
 	)
 	if err != nil {
-		return err
+		errCh <- err
+		return
 	}
 
 	_, err = tx.Sign(func(pk solana.PublicKey) *solana.PrivateKey {
@@ -110,7 +110,8 @@ func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 		return nil
 	})
 	if err != nil {
-		return err
+		errCh <- err
+		return
 	}
 
 	transactionSignature, err := sc.RpcClient.SendTransactionWithOpts(
@@ -122,14 +123,14 @@ func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 		},
 	)
 	if err != nil {
-		solanaLogger.Errorf(err, "[ERROR]: Failed to send combined transaction")
-		solanaLogger.Infof("[DEBUG]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
-		return err
+		solanaLogger.Errorf(err, "Failed to send combined transaction")
+		solanaLogger.Debugf("ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
+		errCh <- err
+		return
 	}
 
-	solanaLogger.Infof("[INFO]: Successfully sent combined transaction: %s", transactionSignature)
+	solanaLogger.Infof("Successfully sent combined transaction: %s", transactionSignature)
 	sigCh <- transactionSignature
-	return nil
 }
 
 func (sc *SolanaClient) CreateZkpAccount(
@@ -139,7 +140,7 @@ func (sc *SolanaClient) CreateZkpAccount(
 	solanaLogger := logger.Default()
 	space := calculateRequiredAccountSpace(zkpData)
 
-	solanaLogger.Infof("[INFO]: ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
+	solanaLogger.Infof("ZKP data size: %d bytes, allocated space: %d bytes", len(zkpData), space)
 
 	rent, err := sc.RpcClient.GetMinimumBalanceForRentExemption(
 		context.Background(),
@@ -206,13 +207,13 @@ func (sc *SolanaClient) CreateZkpAccount(
 		},
 	)
 	if err != nil {
-		solanaLogger.Errorf(err, "[ERROR]: Failed to create account")
-		solanaLogger.Infof("[DEBUG]: Requested space: %d bytes, rent: %d lamports", space, rent)
+		solanaLogger.Errorf(err, "Failed to create account")
+		solanaLogger.Debugf("Requested space: %d bytes, rent: %d lamports", space, rent)
 		errCh <- err
 		return
 	}
 
-	solanaLogger.Infof("[INFO]: Successfully created account with %d bytes of space", space)
+	solanaLogger.Infof("Successfully created account with %d bytes of space", space)
 
 	accountCh <- newAccount
 }
@@ -241,6 +242,6 @@ func calculateRequiredAccountSpace(data []byte) uint64 {
 		totalSize = 2048
 	}
 
-	logger.Default().Infof("[DEBUG]: Data size: %d, calculated space: %d", dataSize, totalSize)
+	logger.Default().Debugf("Data size: %d, calculated space: %d", dataSize, totalSize)
 	return uint64(totalSize)
 }
