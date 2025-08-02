@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,14 +26,13 @@ func main() {
 
 	switch cmd {
 	case "create":
-		// postJSON(base+"/api/v1/identity", args)
 		msg := fmt.Sprintf("{\"identity_name\":\"%s\"}", mustArg(args, 0))
-		r := bytes.NewBufferString(msg)
-		do("POST", base+"/api/v1/identity", r)
+		do("POST", base+"/api/v1", bytes.NewBufferString(msg))
 	case "get":
-		getJSON(base+"/api/v1/identity", args)
+		do("GET", base+"/api/v1/"+mustArg(args, 0), bytes.NewBufferString(""))
 	case "verify":
-		postJSON(base+"/api/v1/identity/verify", args)
+		msg := "{\"identity_id\":\"" + mustArg(args, 0) + "\",\"zkp_schema\":" + mustArg(args, 1) + "}"
+		do("POST", base+"/api/v1/verify", bytes.NewBufferString(msg))
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", cmd)
 		usage()
@@ -46,12 +44,12 @@ func usage() {
 	fmt.Println(`Usage: cli <command> [options]
 
 Commands:
-  create   -d '{"identity_name":"foo"}'   POST /api/v1/identity
-  get      <id>                            GET  /api/v1/identity/:id
-  verify   -d '{"identity_id":"id", "schema":"bar"}' POST /api/v1/identity/verify
+  create  <name>	         POST /api/v1/
+  get     <id>               GET  /api/v1/:id
+  verify  <id> <schema>      POST /api/v1/verify
 
 Environment:
-  API_BASE   override default http://localhost:8080
+  API_BASE   override default http://localhost:9000
 `)
 }
 
@@ -62,53 +60,6 @@ func mustArg(args []string, idx int) string {
 		os.Exit(3)
 	}
 	return args[idx]
-}
-
-func get(url string) {
-	do("GET", url, nil)
-}
-
-func del(url string) {
-	do("DELETE", url, nil)
-}
-
-func postNoBody(url string) {
-	do("POST", url, nil)
-}
-
-func getJSON(url string, args []string) {
-	// data := pickJSON(args)
-	// do("GET", url, data)
-	msg := fmt.Sprintf("{\"identity_name\":\"%s\"}", mustArg(args, 0))
-	r := bytes.NewBufferString(msg)
-	do("GET", url, r)
-}
-
-func postJSON(url string, args []string) {
-	data := pickJSON(args)
-	do("POST", url, data)
-}
-
-func putJSON(url string, args []string) {
-	data := pickJSON(args)
-	do("PUT", url, data)
-}
-
-func pickJSON(args []string) io.Reader {
-	fs := flag.NewFlagSet("", flag.ExitOnError)
-	body := fs.String("d", "", "request JSON body")
-	fs.Parse(args)
-	var r io.Reader
-	if *body != "" {
-		r = bytes.NewBufferString(*body)
-	} else {
-		// read from stdin
-		stat, _ := os.Stdin.Stat()
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			r = os.Stdin
-		}
-	}
-	return r
 }
 
 func do(method, url string, body io.Reader) {
