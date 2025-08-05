@@ -1,5 +1,30 @@
 {
     "logger": {
         "log_level": -1
+    },
+    "rabbitmq": {
+        "exchanges": [
+            {
+                "exchange_name": "identity",
+                "exchange_type": "direct"
+            }
+        ],
+        "queues": [
+            {
+                "queue_name": "identity.verified",
+                "routing_key": "identity.verified",
+                "exchange_binding": "identity",
+                "durable": true,
+                "exclusive": false
+            },
+            {
+                "queue_name": "identity.verified.results",
+                "routing_key": "identity.verified.results",
+                "exchange_binding": "identity",
+                "durable": true,
+                "exclusive": false
+            }
+        ]
     }
+
 }

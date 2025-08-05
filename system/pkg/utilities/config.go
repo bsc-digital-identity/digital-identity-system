@@ -5,6 +5,10 @@ import (
 	"os"
 )
 
+type JsonConfigObj[T any] interface {
+	ConvertToDomain() T
+}
+
 func ReadConfig[T any](file string) (T, error) {
 	var empty T
 
@@ -20,4 +24,12 @@ func ReadConfig[T any](file string) (T, error) {
 	}
 
 	return config, nil
+}
+
+func ConvertJsonArrayToDomain[T JsonConfigObj[U], U any](jsonArray []T) []U {
+	var domainArray []U
+	for _, item := range jsonArray {
+		domainArray = append(domainArray, item.ConvertToDomain())
+	}
+	return domainArray
 }
