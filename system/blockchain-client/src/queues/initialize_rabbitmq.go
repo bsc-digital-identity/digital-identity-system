@@ -10,6 +10,10 @@ import (
 
 type RabbitmqExchangeType string
 
+func (ret RabbitmqExchangeType) String() string {
+	return string(ret)
+}
+
 const (
 	ExchangeFanout  RabbitmqExchangeType = "fanout"
 	ExchangeDirect  RabbitmqExchangeType = "direct"
@@ -39,60 +43,60 @@ func ConnectToRabbitmq() (*amqp.Connection, error) {
 }
 
 // CreateNewExchange declares an exchange (e.g. "identity", direct)
-func CreateNewExchange(ch *amqp.Channel, exName string, exType RabbitmqExchangeType) error {
+func CreateNewExchange(ch *amqp.Channel, exchangeConfig RabbitmqExchangeConfig) error {
 	return ch.ExchangeDeclare(
-		exName,         // name
-		string(exType), // type
-		true,           // durable
-		false,          // auto-deleted
-		false,          // internal
-		false,          // no-wait
-		nil,            // arguments
+		exchangeConfig.ExchangeName,          // name
+		exchangeConfig.ExchangeType.String(), // type
+		true,                                 // durable
+		false,                                // auto-deleted
+		false,                                // internal
+		false,                                // no-wait
+		nil,                                  // arguments
 	)
 }
 
 // CreateNewQueue declares a queue with given durability/exclusivity
-func CreateNewQueue(ch *amqp.Channel, queueName string, durable, exclusive bool) (amqp.Queue, error) {
+func CreateNewQueue(ch *amqp.Channel, queueConfig RabbitmqQueueConfig) (amqp.Queue, error) {
 	return ch.QueueDeclare(
-		queueName, // name
-		durable,   // durable
-		false,     // delete when unused
-		exclusive, // exclusive
-		false,     // no-wait
-		nil,       // arguments
+		queueConfig.QueueName, // name
+		queueConfig.Durable,   // durable
+		false,                 // delete when unused
+		queueConfig.Exclusive, // exclusive
+		false,                 // no-wait
+		nil,                   // arguments
 	)
 }
 
 // BindQueueToExchange binds a queue to an exchange with a routing key
-func BindQueueToExchange(ch *amqp.Channel, queueName, routingKey, exchangeName string) error {
+func BindQueueToExchange(ch *amqp.Channel, queueConfig RabbitmqQueueConfig) error {
 	return ch.QueueBind(
-		queueName,    // queue name
-		routingKey,   // routing key
-		exchangeName, // exchange
+		queueConfig.QueueName,       // queue name
+		queueConfig.RoutingKey,      // routing key
+		queueConfig.ExchangeBinding, // exchange
 		false,
 		nil,
 	)
 }
 
 // SetupIdentityQueues declares both main and result queues with proper bindings
-func SetupIdentityQueues(ch *amqp.Channel) error {
-	// Declare the direct exchange
-	if err := CreateNewExchange(ch, "identity", ExchangeDirect); err != nil {
-		return err
+func SetupIdentityQueues(ch *amqp.Channel, rabbimqConfig RabbitmqConfig) error {
+	// declare exchanges
+	for _, exchangeConf := range rabbimqConfig.Exchanges {
+		if err := CreateNewExchange(ch, exchangeConf); err != nil {
+			return err
+		}
 	}
-	// Main verification job queue: NOT exclusive, durable
-	if _, err := CreateNewQueue(ch, "identity.verified", true, false); err != nil {
-		return err
+
+	// declare queues and bind to exchanges
+	for _, queueConf := range rabbimqConfig.Queues {
+		if _, err := CreateNewQueue(ch, queueConf); err != nil {
+			return err
+		}
+
+		if err := BindQueueToExchange(ch, queueConf); err != nil {
+			return err
+		}
 	}
-	if err := BindQueueToExchange(ch, "identity.verified", "identity.verified", "identity"); err != nil {
-		return err
-	}
-	// Results queue: NOT exclusive, durable
-	if _, err := CreateNewQueue(ch, "identity.verified.results", true, false); err != nil {
-		return err
-	}
-	if err := BindQueueToExchange(ch, "identity.verified.results", "identity.verified.results", "identity"); err != nil {
-		return err
-	}
+
 	return nil
 }

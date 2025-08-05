@@ -24,9 +24,18 @@ func main() {
 
 	defaultLogger := logger.Default()
 
+	// load config for blockchain client
+	blockchainClientConfigJson, err := utilities.ReadConfig[BlockchainClientConfigJson]("config.json")
+	if err != nil {
+		defaultLogger.Fatal(err, "Unable to load blockchain client config")
+	}
+
+	blockchainClientConfig := blockchainClientConfigJson.ConvertToDomain()
+	blockchainLogger := logger.NewFromConfig(blockchainClientConfig.LoggerConf)
+
 	solanaConfig, err := config.LoadSolanaKeys()
 	if err != nil {
-		defaultLogger.Fatal(err, "Unable to load keypairs for solana")
+		blockchainLogger.Fatal(err, "Unable to load keypairs for solana")
 	}
 
 	rpcClient := rpc.New("http://host.docker.internal:8899")
@@ -46,7 +55,7 @@ func main() {
 	defer ch.Close()
 
 	// 3. Declare exchange and both queues, and bind
-	err = queues.SetupIdentityQueues(ch)
+	err = queues.SetupIdentityQueues(ch, blockchainClientConfig.RabbimqConf)
 	utilities.FailOnError(err, "Failed to setup exchange/queues")
 
 	// 4. Start consuming from the job queue ("identity.verified")
