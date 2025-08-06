@@ -38,11 +38,10 @@ func main() {
 	})
 	defaultLogger := logger.Default()
 
-	apiConfigJson, err := utilities.ReadConfig[ApiConfigJson]("config.json")
+	apiConfig, err := utilities.ReadConfig[ApiConfigJson]("config.json")
 	if err != nil {
 		defaultLogger.Fatalf(err, "Loading config failed")
 	}
-	apiConfig := apiConfigJson.ConvertToDomain()
 
 	apiLogger := logger.NewFromConfig(apiConfig.LoggerConf)
 	// Setup DB

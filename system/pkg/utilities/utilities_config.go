@@ -9,8 +9,8 @@ type JsonConfigObj[T any] interface {
 	ConvertToDomain() T
 }
 
-func ReadConfig[T any](file string) (T, error) {
-	var empty T
+func ReadConfig[T JsonConfigObj[U], U any](file string) (U, error) {
+	var empty U
 
 	fileContent, err := os.ReadFile(file)
 	if err != nil {
@@ -23,7 +23,7 @@ func ReadConfig[T any](file string) (T, error) {
 		return empty, err
 	}
 
-	return config, nil
+	return config.ConvertToDomain(), nil
 }
 
 func ConvertJsonArrayToDomain[T JsonConfigObj[U], U any](jsonArray []T) []U {
