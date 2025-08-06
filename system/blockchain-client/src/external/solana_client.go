@@ -2,18 +2,79 @@ package external
 
 import (
 	"blockchain-client/src/config"
+	"blockchain-client/src/queues"
+
 	"blockchain-client/src/zkp"
 	"context"
+	"encoding/json"
 	"pkg-common/logger"
+	"pkg-common/rabbitmq"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/gagliardetto/solana-go/rpc"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type SolanaClient struct {
 	Config    *config.SharedSolanaConfig
 	RpcClient *rpc.Client
+	Consumer  rabbitmq.IRabbitmqConsumer
+}
+
+func NewSolanaClient(config *config.SharedSolanaConfig) *SolanaClient {
+	return &SolanaClient{
+		RpcClient: rpc.New("http://host.docker.internal:8899"),
+		Consumer:  rabbitmq.GetConsumer("VerifiedPositiveConsumer"),
+		Config:    config,
+	}
+
+}
+
+func (sc *SolanaClient) StartService() {
+	solanaLogger := logger.Default()
+	failurePublisher := rabbitmq.GetPublisher(rabbitmq.PublisherAlias("IdentityFailurePublisher"))
+	resultPublisher := rabbitmq.GetPublisher(rabbitmq.PublisherAlias("IdentityResultsPublisher"))
+
+	sc.Consumer.StartConsuming(func(d amqp.Delivery) {
+		var req queues.ZeroKnowledgeProofVerificationRequest
+		err := json.Unmarshal(d.Body, &req)
+		if err != nil {
+			result := queues.ZeroKnowledgeProofVerificationResponse{
+				IdentityId:   req.IdentityId,
+				IsProofValid: false,
+				Error:        "unmarshal: " + err.Error(),
+			}
+
+			_ = failurePublisher.Publish(result)
+		}
+
+		// TODO: mock data read from reqesut
+		// replace to read from request
+		zkpResult, err := zkp.CreateZKP(10, 10, 1990)
+		if err != nil {
+			solanaLogger.Errorf(err, "Failed to create ZKP with user provided data: %d", 10)
+			return
+		}
+
+		signatureChan := make(chan solana.Signature)
+		errChan := make(chan error)
+
+		go sc.PublishZkpToSolana(*zkpResult, errChan, signatureChan)
+
+		var signature solana.Signature
+		select {
+		case signature = <-signatureChan:
+			solanaLogger.Infof("Saved zkp to blockchain with signature: %s", signature.String())
+		case err := <-errChan:
+			solanaLogger.Errorf(err, "Unable to save the ZKP to the blockchain")
+		}
+
+		result := queues.MockZKPVerification(req, signature)
+
+		_ = resultPublisher.Publish(req)
+		solanaLogger.Infof("Processed ZKP Verification for %s. ProofReference: %s", req.IdentityId, result.ProofReference)
+	})
 }
 
 // TODO: add option for the users to be payers instead of owners

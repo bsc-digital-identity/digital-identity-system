@@ -1,5 +1,28 @@
 {
     "logger": {
         "log_level": -1
+    },
+    "rabbitmq": {
+        "user": "id_system_api",
+        "password": "id_system_api",
+        "publishers": [
+            {
+                "publisher_alias": "VerifiersUnverifiedPublisher",
+                "exchange": "verifiers",
+                "routing_key": "unverified.#"
+            }
+        ],
+        "consumers": [
+            {
+                "consumer_alias": "ProofResultsConsumer",
+                "consumer_tag": "api-proof-results",
+                "queue_name": "proof.results"
+            },
+            {
+                "consumer_alias": "ProofFailuresConsumer",
+                "consumer_tag": "api-proof-failures",
+                "queue_name": "proof.failures"
+            }
+        ]
     }
 }

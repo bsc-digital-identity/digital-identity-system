@@ -57,7 +57,7 @@
       "user": "id_system_api",
       "vhost": "/",
       "configure": "^$",
-      "write": "^$",
+      "write": "verifiers\\..*",
       "read": "identity"
     },
     {
@@ -65,7 +65,7 @@
       "vhost": "/",
       "configure": "^$",
       "write": "identity",
-      "read": "verifiers\\.verified\\..*"
+      "read": "verified\\.(positive|negative)"
     }
   ],
   "exchanges": [
