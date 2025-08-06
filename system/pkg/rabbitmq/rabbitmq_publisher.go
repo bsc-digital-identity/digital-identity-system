@@ -21,7 +21,7 @@ func GetPublisher(alias PublisherAlias) IRabbitmqPublisher {
 }
 
 func InitializePublisherRegistry(conn *amqp.Connection, publisherConfig []RabbitmqPublishersConfig) {
-	onceConsumer.Do(func() {
+	oncePublisher.Do(func() {
 		PublisherRegistry = make(map[PublisherAlias]IRabbitmqPublisher)
 
 		for _, publisher := range publisherConfig {
