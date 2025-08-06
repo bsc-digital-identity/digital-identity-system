@@ -1,23 +1,23 @@
 package main
 
 import (
-	"blockchain-client/src/queues"
 	"pkg-common/logger"
+	"pkg-common/rabbitmq"
 )
 
 type BlockchainClientConfigJson struct {
-	loggerConf   logger.LoggerConfigJson  `json:"logger"`
-	rabbitmqConf queues.RabbimqConfigJson `json:"rabbitmq"`
+	LoggerConf   logger.LoggerConfigJson    `json:"logger"`
+	RabbitmqConf rabbitmq.RabbimqConfigJson `json:"rabbitmq"`
 }
 
 type BlockchainClientConfig struct {
 	LoggerConf  logger.LoggerConfig
-	RabbimqConf queues.RabbitmqConfig
+	RabbimqConf rabbitmq.RabbitmqConfig
 }
 
 func (bccj BlockchainClientConfigJson) ConvertToDomain() BlockchainClientConfig {
 	return BlockchainClientConfig{
-		LoggerConf:  bccj.loggerConf.ConvertToDomain(),
-		RabbimqConf: bccj.rabbitmqConf.ConvertToDomain(),
+		LoggerConf:  bccj.LoggerConf.ConvertToDomain(),
+		RabbimqConf: bccj.RabbitmqConf.ConvertToDomain(),
 	}
 }

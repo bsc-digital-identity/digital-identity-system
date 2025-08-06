@@ -3,20 +3,30 @@
         "log_level": -1
     },
     "rabbitmq": {
-        "queues": [
+        "user": "id_system_blockchain",
+        "password": "id_system_blockchain",
+        "publishers": [
             {
-                "queue_name": "identity.verified",
-                "routing_key": "identity.verified",
-                "exchange_binding": "identity",
-                "durable": true,
-                "exclusive": false
+                "publisher_alias": "IdentityResultsPublisher",
+                "exchange": "identity",
+                "routing_key": "proof.results"
             },
             {
-                "queue_name": "identity.verified.results",
-                "routing_key": "identity.verified.results",
-                "exchange_binding": "identity",
-                "durable": true,
-                "exclusive": false
+                "publisher_alias": "IdentityFailurePublisher",
+                "exchange": "identity",
+                "routing_key": "proof.failures"
+            }
+        ],
+        "consumers": [
+            {
+                "consumer_alias": "VerifiedPositiveConsumer",
+                "consumer_tag": "blockchain-verified-positive",
+                "queue_name": "verified.positive"
+            },
+            {
+                "consumer_alias": "VerifiedNegativeConsumer",
+                "consumer_tag": "blockchain-verified-negative",
+                "queue_name": "verified.negative"
             }
         ]
     }
