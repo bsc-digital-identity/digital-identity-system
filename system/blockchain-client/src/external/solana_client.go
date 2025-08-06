@@ -2,11 +2,11 @@ package external
 
 import (
 	"blockchain-client/src/config"
-	"blockchain-client/src/queues"
 
 	"blockchain-client/src/zkp"
 	"context"
 	"encoding/json"
+	dtocommon "pkg-common/dto_common"
 	"pkg-common/logger"
 	"pkg-common/rabbitmq"
 
@@ -37,13 +37,12 @@ func (sc *SolanaClient) StartService() {
 	resultPublisher := rabbitmq.GetPublisher(rabbitmq.PublisherAlias("IdentityResultsPublisher"))
 
 	sc.Consumer.StartConsuming(func(d amqp.Delivery) {
-		var req queues.ZeroKnowledgeProofVerificationRequest
+		var req dtocommon.ZeroKnowledgeProofVerificationResultDto
 		err := json.Unmarshal(d.Body, &req)
 		if err != nil {
-			result := queues.ZeroKnowledgeProofVerificationResponse{
-				IdentityId:   req.IdentityId,
-				IsProofValid: false,
-				Error:        "unmarshal: " + err.Error(),
+			result := dtocommon.ZeroKnowledgeProofVerificationFailureDto{
+				IdentityId: req.IdentityId,
+				Error:      "unmarshal: " + err.Error(),
 			}
 
 			_ = failurePublisher.Publish(result)
@@ -60,7 +59,7 @@ func (sc *SolanaClient) StartService() {
 		signatureChan := make(chan solana.Signature)
 		errChan := make(chan error)
 
-		go sc.PublishZkpToSolana(*zkpResult, errChan, signatureChan)
+		go sc.publishZkpToSolana(*zkpResult, errChan, signatureChan)
 
 		var signature solana.Signature
 		select {
@@ -70,15 +69,16 @@ func (sc *SolanaClient) StartService() {
 			solanaLogger.Errorf(err, "Unable to save the ZKP to the blockchain")
 		}
 
-		result := queues.MockZKPVerification(req, signature)
+		// TODO: replace with actual implementations
+		//result := queues.MockZKPVerification(req, signature)
 
 		_ = resultPublisher.Publish(req)
-		solanaLogger.Infof("Processed ZKP Verification for %s. ProofReference: %s", req.IdentityId, result.ProofReference)
+		//solanaLogger.Infof("Processed ZKP Verification for %s. ProofReference: %s", req.IdentityId, result.ProofReference)
 	})
 }
 
 // TODO: add option for the users to be payers instead of owners
-func (sc *SolanaClient) PublishZkpToSolana(
+func (sc *SolanaClient) publishZkpToSolana(
 	zkpResult zkp.ZkpResult,
 	errCh chan error,
 	sigCh chan solana.Signature) {
@@ -91,11 +91,11 @@ func (sc *SolanaClient) PublishZkpToSolana(
 	solanaLogger := logger.Default()
 	solanaLogger.Infof("Serialized ZKP data size: %d bytes", len(zkpData))
 
-	sc.CreateAndPopulateZkpAccount(zkpData, errCh, sigCh)
+	sc.createAndPopulateZkpAccount(zkpData, errCh, sigCh)
 }
 
 // creates new account and stores zkp data for future retrival
-func (sc *SolanaClient) CreateAndPopulateZkpAccount(
+func (sc *SolanaClient) createAndPopulateZkpAccount(
 	zkpData []byte,
 	errCh chan error,
 	sigCh chan solana.Signature) {
@@ -194,7 +194,7 @@ func (sc *SolanaClient) CreateAndPopulateZkpAccount(
 	sigCh <- transactionSignature
 }
 
-func (sc *SolanaClient) CreateZkpAccount(
+func (sc *SolanaClient) createZkpAccount(
 	zkpData []byte,
 	errCh chan error,
 	accountCh chan solana.PrivateKey) {

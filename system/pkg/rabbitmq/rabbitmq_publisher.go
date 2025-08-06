@@ -1,8 +1,8 @@
 package rabbitmq
 
 import (
-	"encoding/json"
 	"pkg-common/logger"
+	"pkg-common/utilities"
 	"sync"
 	"time"
 
@@ -54,11 +54,11 @@ func NewPublisher(ch *amqp.Channel, exchange, routingKey string) *RabbitmqPublis
 }
 
 type IRabbitmqPublisher interface {
-	Publish(body any) error
+	Publish(body utilities.Serializable) error
 }
 
-func (rp *RabbitmqPublisher) Publish(body any) error {
-	body_json, err := json.Marshal(body)
+func (rp *RabbitmqPublisher) Publish(body utilities.Serializable) error {
+	json, err := body.Serialize()
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (rp *RabbitmqPublisher) Publish(body any) error {
 		false, false,
 		amqp.Publishing{
 			ContentType:  "application/json",
-			Body:         body_json,
+			Body:         json,
 			Timestamp:    time.Now(),
 			DeliveryMode: amqp.Persistent,
 		},
