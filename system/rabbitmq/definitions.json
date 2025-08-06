@@ -14,6 +14,21 @@
       "name": "guest",
       "password": "guest",
       "tags": "administrator"
+    },
+    {
+      "name": "verifier_mock",
+      "password": "verifier_mock",
+      "tags": "verifier"
+    },
+    {
+      "name": "id_system_api",
+      "password": "id_system_api",
+      "tags": "digital_identity"
+    },
+    {
+      "name": "id_system_blockchain",
+      "password": "id_system_blockchain",
+      "tags": "digital_identity"
     }
   ],
   "permissions": [
@@ -30,6 +45,126 @@
       "configure": ".*",
       "write": ".*",
       "read": ".*"
+    },
+    {
+      "user": "verifier_mock",
+      "vhost": "/",
+      "configure": "^unverified(\\.(.+))?$",
+      "write": "verifiers\\.verified\\..*",
+      "read": "verifiers\\.unverified\\..*"
+    },
+    {
+      "user": "id_system_api",
+      "vhost": "/",
+      "configure": "^$",
+      "write": "^$",
+      "read": "identity"
+    },
+    {
+      "user": "id_system_blockchain",
+      "vhost": "/",
+      "configure": "^$",
+      "write": "identity",
+      "read": "verifiers\\.verified\\..*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "verifiers",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "identity",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "unverified",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "verified.positive",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "verified.negative",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "proof.results",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "proof.failures",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "verifiers",
+      "vhost": "/",
+      "destination": "unverified",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "verifiers",
+      "vhost": "/",
+      "destination": "verified.positive",
+      "destination_type": "queue",
+      "routing_key": "verifiers.verified.positive",
+      "arguments": {}
+    },
+    {
+      "source": "verifiers",
+      "vhost": "/",
+      "destination": "verified.negative",
+      "destination_type": "queue",
+      "routing_key": "verifiers.verified.negative",
+      "arguments": {}
+    },
+    {
+      "source": "identity",
+      "vhost": "/",
+      "destination": "proof.results",
+      "destination_type": "queue",
+      "routing_key": "proof.results",
+      "arguments": {}
+    },
+    {
+      "source": "identity",
+      "vhost": "/",
+      "destination": "proof.failures",
+      "destination_type": "queue",
+      "routing_key": "proof.failures",
+      "arguments": {}
     }
   ]
 }
