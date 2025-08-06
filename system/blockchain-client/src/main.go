@@ -22,16 +22,10 @@ func main() {
 
 	defaultLogger := logger.Default()
 
-	// load config for blockchain client
-	blockchainClientConfigJson, err := utilities.ReadConfig[BlockchainClientConfigJson]("config.json")
-	if err != nil {
-		defaultLogger.Fatal(err, "Unable to load blockchain client config")
-	}
-
-	blockchainClientConfig := blockchainClientConfigJson.ConvertToDomain()
+	blockchainClientConfig, err := utilities.ReadConfig[BlockchainClientConfigJson]("config.json")
 	blockchainLogger := logger.NewFromConfig(blockchainClientConfig.LoggerConf)
 
-	blockchainLogger.Infof("Loaded config %s", blockchainClientConfig.RabbimqConf.Password)
+	blockchainLogger.Infof("Loaded config %s", blockchainClientConfig)
 	solanaConfig, err := config.LoadSolanaKeys()
 	if err != nil {
 		blockchainLogger.Fatal(err, "Unable to load keypairs for solana")

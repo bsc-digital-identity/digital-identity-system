@@ -17,7 +17,7 @@ type ApiConfig struct {
 	LoggerConf logger.LoggerConfig
 }
 
-func (acj *ApiConfigJson) ConvertToDomain() ApiConfig {
+func (acj ApiConfigJson) ConvertToDomain() ApiConfig {
 	return ApiConfig{
 		LoggerConf: acj.loggerConf.ConvertToDomain(),
 	}
