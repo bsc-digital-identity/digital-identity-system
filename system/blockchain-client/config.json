@@ -3,12 +3,6 @@
         "log_level": -1
     },
     "rabbitmq": {
-        "exchanges": [
-            {
-                "exchange_name": "identity",
-                "exchange_type": "direct"
-            }
-        ],
         "queues": [
             {
                 "queue_name": "identity.verified",
@@ -26,5 +20,4 @@
             }
         ]
     }
-
 }
