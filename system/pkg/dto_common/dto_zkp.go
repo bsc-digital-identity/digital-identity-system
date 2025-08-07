@@ -2,23 +2,23 @@ package dtocommon
 
 import "pkg-common/utilities"
 
-type ZeroKnowledgeProofVerificationResultDto struct {
+type ZkpProofResultDto struct {
 	IdentityId     string `json:"identity_id"`
 	ProofReference string `json:"proof_reference"`
 	Schema         string `json:"schema"`
 }
 
-func (zkpr ZeroKnowledgeProofVerificationResultDto) Serialize() ([]byte, error) {
-	return utilities.Serialize[ZeroKnowledgeProofVerificationResultDto](zkpr)
+func (zkpr ZkpProofResultDto) Serialize() ([]byte, error) {
+	return utilities.Serialize[ZkpProofResultDto](zkpr)
 }
 
-type ZeroKnowledgeProofVerificationFailureDto struct {
-	IdentityId     string `json:"identity_id"`
-	ProofReference string `json:"proof_reference"`
-	Schema         string `json:"schema"`
-	Error          string `json:"error"`
+type ZkpProofFailureDto struct {
+	IdentityId string `json:"identity_id"`
+	Schema     string `json:"schema"`
+	ReqestBody []byte `json:"request_body"`
+	Error      string `json:"error"`
 }
 
-func (zkpf ZeroKnowledgeProofVerificationFailureDto) Serialize() ([]byte, error) {
-	return utilities.Serialize[ZeroKnowledgeProofVerificationResultDto](zkpf)
+func (zkpf ZkpProofFailureDto) Serialize() ([]byte, error) {
+	return utilities.Serialize[ZkpProofFailureDto](zkpf)
 }

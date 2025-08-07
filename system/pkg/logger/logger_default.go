@@ -10,19 +10,25 @@ type GlobalLoggerConfig struct {
 }
 
 var (
-	defaultLogger *Logger
-	once          sync.Once
+	defaultLogger     *Logger
+	onceLogger        sync.Once
+	initializedLogger bool
 )
 
 func InitDefaultLogger(config GlobalLoggerConfig) {
-	once.Do(func() {
+	onceLogger.Do(func() {
 		defaultLogger = New()
 		for _, arg := range config.Args {
 			defaultLogger.With().Str(arg.Key, arg.Value)
 		}
+
+		initializedLogger = true
 	})
 }
 
 func Default() *Logger {
+	if !initializedLogger {
+		panic("Deafult logger not initialized: call InitDefaultLogger() first")
+	}
 	return defaultLogger
 }

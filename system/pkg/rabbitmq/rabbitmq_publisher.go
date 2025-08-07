@@ -12,11 +12,15 @@ import (
 type PublisherAlias string
 
 var (
-	PublisherRegistry map[PublisherAlias]IRabbitmqPublisher
-	oncePublisher     sync.Once
+	PublisherRegistry    map[PublisherAlias]IRabbitmqPublisher
+	oncePublisher        sync.Once
+	initializedPublisher bool
 )
 
 func GetPublisher(alias PublisherAlias) IRabbitmqPublisher {
+	if !initializedPublisher {
+		panic("Publisher registry not initialized: call InitializePublisherRegistry() first")
+	}
 	return PublisherRegistry[alias]
 }
 
@@ -36,6 +40,8 @@ func InitializePublisherRegistry(conn *amqp.Connection, publisherConfig []Rabbit
 				publisher.RoutingKey,
 			)
 		}
+
+		initializedPublisher = true
 	})
 }
 

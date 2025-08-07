@@ -11,11 +11,15 @@ import (
 type ConsumerAlias string
 
 var (
-	ConsumerRegistry map[ConsumerAlias]IRabbitmqConsumer
-	onceConsumer     sync.Once
+	ConsumerRegistry    map[ConsumerAlias]IRabbitmqConsumer
+	onceConsumer        sync.Once
+	initializedConsumer bool
 )
 
 func GetConsumer(alias ConsumerAlias) IRabbitmqConsumer {
+	if !initializedConsumer {
+		panic("Consumer registry not initialized: call InitializeConsumerRegistry() first")
+	}
 	return ConsumerRegistry[alias]
 }
 
@@ -35,6 +39,8 @@ func InitializeConsumerRegistry(conn *amqp.Connection, consumerConfig []Rabbitmq
 				consumer.ConsumerTag,
 			)
 		}
+
+		initializedConsumer = true
 	})
 }
 

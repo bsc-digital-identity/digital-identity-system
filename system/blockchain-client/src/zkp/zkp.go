@@ -1,6 +1,8 @@
 package zkp
 
 import (
+	"blockchain-client/src/types/domain"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
@@ -11,7 +13,8 @@ const (
 	ElipticalCurveID = ecc.BN254
 )
 
-func CreateZKP(birthDay, birthMonth, birthYear int) (*ZkpResult, error) {
+// TODO: actual implementation of zkp creation of any circuit type
+func CreateZKP(base domain.ZkpCircuitBase) (*ZkpResult, error) {
 	// 1. Compile the circuit (constraint system)
 	ccs, err := frontend.Compile(
 		ElipticalCurveID.ScalarField(),
@@ -30,9 +33,9 @@ func CreateZKP(birthDay, birthMonth, birthYear int) (*ZkpResult, error) {
 
 	// 3. Assign inputs
 	assignment := IdentityCircuit{
-		AgeDay:   birthDay,
-		AgeMonth: birthMonth,
-		AgeYear:  birthYear,
+		AgeDay:   base.Day,
+		AgeMonth: base.Month,
+		AgeYear:  base.Year,
 	}
 
 	fullWitness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
