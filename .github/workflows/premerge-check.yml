@@ -7,8 +7,8 @@ on:
     - main
 
 jobs:
-  test:
-    name: run project tests
+  setup:
+    name: Test runner setup
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repo 
@@ -24,12 +24,43 @@ jobs:
     - name: Check go version 
       run: go version
 
+  test_blockchain:
+    needs: setup
+    name: Run blockchain client test suite
+    runs-on: ubuntu-latest
+    steps:
     - name: Download dependencies for blockchain-client project
       working-directory: ./src/system/blockchain-client
       run: go mod download
 
     - name: Run tests for blockchain-client project
       working-directory: ./src/system/blockchain-client/test
+      run: go test -v
+
+  test_api:
+    needs: setup
+    name: Run api test suite
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download dependencies for pkg project
+      working-directory: ./src/system/pkg
+      run: go mod download
+
+    - name: Run tests for pkg project
+      working-directory: ./src/system/pkg/test
+      run: go test -v
+
+  test_pkg:
+    needs: setup
+    name: Run pkg-common test suite
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download dependencies for api project
+      working-directory: ./src/system/api
+      run: go mod download
+
+    - name: Run tests for api project
+      working-directory: ./src/system/api/test
       run: go test -v
 
   sonarqube:
