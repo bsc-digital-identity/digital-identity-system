@@ -7,60 +7,91 @@ on:
     - main
 
 jobs:
-  setup:
-    name: Test runner setup
+  test_blockchain:
+    name: Run blockchain client test suite
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repo 
       uses: actions/checkout@v4
       with: 
         path: 'src'
+        fetch-depth: 1
+        sparse-checkout: |
+            system/
+        sparse-checkout-cone-mode: false
 
     - name: Setup go environment 
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24.5'
+        go-version: '1.24.5'  
 
     - name: Check go version 
       run: go version
 
-  test_blockchain:
-    needs: setup
-    name: Run blockchain client test suite
-    runs-on: ubuntu-latest
-    steps:
     - name: Download dependencies for blockchain-client project
       working-directory: ./src/system/blockchain-client
       run: go mod download
 
     - name: Run tests for blockchain-client project
-      working-directory: ./src/system/blockchain-client/test
+      working-directory: ./src/system/blockchain-client
       run: go test -v
 
   test_api:
-    needs: setup
-    name: Run api test suite
+    name: Run API test suite
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout repo 
+      uses: actions/checkout@v4
+      with: 
+        path: 'src'
+        fetch-depth: 1
+        sparse-checkout: |
+            system/
+        sparse-checkout-cone-mode: false
+
+    - name: Setup go environment 
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24.5'  
+
+    - name: Check go version 
+      run: go version
+
+    - name: Download dependencies for API project
+      working-directory: ./src/system/api
+      run: go mod download
+
+    - name: Run tests for API project
+      working-directory: ./src/system/api/test
+      run: go test -v
+
+  test_pkg:
+    name: Run pkg-common test suite
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo 
+      uses: actions/checkout@v4
+      with: 
+        path: 'src'
+        fetch-depth: 1
+        sparse-checkout: |
+            system/
+        sparse-checkout-cone-mode: false
+
+    - name: Setup go environment 
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24.5'  
+
+    - name: Check go version 
+      run: go version
+
     - name: Download dependencies for pkg project
       working-directory: ./src/system/pkg
       run: go mod download
 
     - name: Run tests for pkg project
       working-directory: ./src/system/pkg/test
-      run: go test -v
-
-  test_pkg:
-    needs: setup
-    name: Run pkg-common test suite
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download dependencies for api project
-      working-directory: ./src/system/api
-      run: go mod download
-
-    - name: Run tests for api project
-      working-directory: ./src/system/api/test
       run: go test -v
 
   sonarqube:
