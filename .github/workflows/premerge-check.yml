@@ -33,7 +33,7 @@ jobs:
       run: go mod download
 
     - name: Run tests for blockchain-client project
-      working-directory: ./src/system/blockchain-client
+      working-directory: ./src/system/blockchain-client/test
       run: go test -v
 
   test_api:
