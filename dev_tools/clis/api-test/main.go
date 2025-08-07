@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -13,30 +14,38 @@ import (
 const defaultBase = "http://localhost:9000"
 
 func main() {
-	if len(os.Args) < 2 {
-		usage()
-		return
-	}
-
 	base := os.Getenv("API_BASE")
 	if base == "" {
 		base = defaultBase
 	}
 
-	cmd := os.Args[1]
-	args := os.Args[2:]
+	createCmd := flag.NewFlagSet("create", flag.ExitOnError)
+	createName := createCmd.String("name", "", "Identity name (required)")
 
-	switch cmd {
+	getCmd := flag.NewFlagSet("get", flag.ExitOnError)
+	getID := getCmd.String("id", "", "Identity ID (required)")
+
+	verifyCmd := flag.NewFlagSet("verify", flag.ExitOnError)
+	verifyID := verifyCmd.String("id", "", "Identity ID (required)")
+	verifySchema := verifyCmd.String("schema", "", "ZKP schema (required)")
+
+	if len(os.Args) < 2 {
+		usage()
+		return
+	}
+
+	switch os.Args[1] {
 	case "create":
-		name, err := mustArg(args, 0)
-		if err != nil {
-			usage()
-			log.Fatal(err)
+		createCmd.Parse(os.Args[2:])
+		if *createName == "" {
+			fmt.Fprintln(os.Stderr, "Missing required flag: -name")
+			createCmd.Usage()
+			os.Exit(1)
 		}
 		req := struct {
 			IdentityName string `json:"identity_name"`
 		}{
-			IdentityName: name,
+			IdentityName: *createName,
 		}
 		msg, err := json.Marshal(req)
 		if err != nil {
@@ -48,69 +57,62 @@ func main() {
 		}
 
 	case "get":
-		name, err := mustArg(args, 0)
-		if err != nil {
-			usage()
-			log.Fatal(err)
+		getCmd.Parse(os.Args[2:])
+		if *getID == "" {
+			fmt.Fprintln(os.Stderr, "Missing required flag: -id")
+			getCmd.Usage()
+			os.Exit(1)
 		}
-		err = do("GET", base+"/api/v1/"+name, bytes.NewBufferString(""))
+		err := do("GET", base+"/api/v1/"+*getID, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 	case "verify":
-		name, err := mustArg(args, 0)
-		if err != nil {
-			usage()
-			log.Fatal(err)
+		verifyCmd.Parse(os.Args[2:])
+		if *verifyID == "" || *verifySchema == "" {
+			fmt.Fprintln(os.Stderr, "Missing required flags: -id and -schema")
+			verifyCmd.Usage()
+			os.Exit(1)
 		}
-		schema, err := mustArg(args, 1)
-		if err != nil {
-			usage()
-			log.Fatal(err)
-		}
-
 		req := struct {
 			IdentityName string `json:"identity_name"`
 			ZKP_Schema   string `json:"zkp_schema"`
 		}{
-			IdentityName: name,
-			ZKP_Schema:   schema,
+			IdentityName: *verifyID,
+			ZKP_Schema:   *verifySchema,
 		}
 		msg, err := json.Marshal(req)
 		if err != nil {
 			log.Fatal(err)
 		}
-
 		err = do("POST", base+"/api/v1/verify", bytes.NewBuffer(msg))
 		if err != nil {
 			log.Fatal(err)
 		}
 
 	default:
-		log.Fatalf("Unknown command: %s\n\n", cmd)
 		usage()
-		os.Exit(2)
+		log.Fatalf("Unknown command: %s\n\n", os.Args[1])
 	}
 }
 
 func usage() {
-	fmt.Println(`Usage: cli <command> [options]
+	fmt.Println(`Usage: cli <command> [flags]
 
 Commands:
-  create  <name>	         POST /api/v1/
-  get     <id>               GET  /api/v1/:id
-  verify  <id> <schema>      POST /api/v1/verify
+  create   -name <name>                 POST /api/v1/
+  get      -id <id>                     GET  /api/v1/:id
+  verify   -id <id> -schema <schema>    POST /api/v1/verify
+
+Flags:
+  -name      Identity name (for create)
+  -id        Identity ID (for get/verify)
+  -schema    ZKP schema (for verify)
 
 Environment:
-  API_BASE   override default http://localhost:9000`)
-}
-
-func mustArg(args []string, idx int) (string, error) {
-	if len(args) <= idx {
-		return "", fmt.Errorf("Missing required argument #%d for command.\n\n", idx+1)
-	}
-	return args[idx], nil
+  API_BASE   override default http://localhost:9000
+`)
 }
 
 func do(method, url string, body io.Reader) error {
