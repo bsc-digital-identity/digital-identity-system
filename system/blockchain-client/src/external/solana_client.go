@@ -2,6 +2,7 @@ package external
 
 import (
 	"blockchain-client/src/config"
+	"blockchain-client/src/types/incoming"
 
 	"blockchain-client/src/zkp"
 	"context"
@@ -37,20 +38,21 @@ func (sc *SolanaClient) StartService() {
 	resultPublisher := rabbitmq.GetPublisher(rabbitmq.PublisherAlias("IdentityResultsPublisher"))
 
 	sc.Consumer.StartConsuming(func(d amqp.Delivery) {
-		var req dtocommon.ZeroKnowledgeProofVerificationResultDto
-		err := json.Unmarshal(d.Body, &req)
+		var message incoming.ZkpVerifiedPositiveDto
+		err := json.Unmarshal(d.Body, &message)
 		if err != nil {
-			result := dtocommon.ZeroKnowledgeProofVerificationFailureDto{
-				IdentityId: req.IdentityId,
+			result := dtocommon.ZkpProofFailureDto{
+				IdentityId: message.IdentityId,
+				Schema:     message.Schema,
+				ReqestBody: d.Body,
 				Error:      "unmarshal: " + err.Error(),
 			}
 
 			_ = failurePublisher.Publish(result)
 		}
 
-		// TODO: mock data read from reqesut
-		// replace to read from request
-		zkpResult, err := zkp.CreateZKP(10, 10, 1990)
+		circuitBase := message.MapToCircuitBase()
+		zkpResult, err := zkp.CreateZKP(circuitBase)
 		if err != nil {
 			solanaLogger.Errorf(err, "Failed to create ZKP with user provided data: %d", 10)
 			return
@@ -69,11 +71,14 @@ func (sc *SolanaClient) StartService() {
 			solanaLogger.Errorf(err, "Unable to save the ZKP to the blockchain")
 		}
 
-		// TODO: replace with actual implementations
-		//result := queues.MockZKPVerification(req, signature)
+		result := dtocommon.ZkpProofResultDto{
+			IdentityId:     message.IdentityId,
+			ProofReference: signature.String(),
+			Schema:         message.Schema,
+		}
 
-		_ = resultPublisher.Publish(req)
-		//solanaLogger.Infof("Processed ZKP Verification for %s. ProofReference: %s", req.IdentityId, result.ProofReference)
+		_ = resultPublisher.Publish(result)
+		solanaLogger.Infof("Processed ZKP Verification for %s. ProofReference: %s", result.IdentityId, result.ProofReference)
 	})
 }
 

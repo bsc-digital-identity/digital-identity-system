@@ -50,7 +50,7 @@
       "user": "verifier_mock",
       "vhost": "/",
       "configure": "^unverified(\\.(.+))?$",
-      "write": "verifiers\\.verified\\..*",
+      "write": "^verifiers$|verifiers\\.verified\\..*",
       "read": "verifiers\\.unverified\\..*"
     },
     {
@@ -139,7 +139,7 @@
       "vhost": "/",
       "destination": "verified.positive",
       "destination_type": "queue",
-      "routing_key": "verifiers.verified.positive",
+      "routing_key": "positive",
       "arguments": {}
     },
     {
@@ -147,7 +147,7 @@
       "vhost": "/",
       "destination": "verified.negative",
       "destination_type": "queue",
-      "routing_key": "verifiers.verified.negative",
+      "routing_key": "negative",
       "arguments": {}
     },
     {
