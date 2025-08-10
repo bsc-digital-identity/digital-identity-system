@@ -1,66 +1,181 @@
-## Getting Started
+# Digital Identity System
+
+## 🎯 Project Overview
+
+The **Digital Identity System** is a cutting-edge blockchain-based platform that leverages **Zero-Knowledge Proofs (ZKP)** to enable privacy-preserving identity verification. Built on the **Solana blockchain**, this system allows users to prove specific attributes about their identity (such as being over 18 years old) without revealing sensitive personal information like their exact birth date.
+
+### 🌟 Key Features
+
+- **Privacy-Preserving Verification**: Prove identity attributes without exposing personal data
+- **Zero-Knowledge Proofs**: Uses advanced cryptographic techniques (Groth16 protocol) for secure verification
+- **Blockchain Integration**: Stores proof references on Solana for tamper-proof verification
+- **Microservices Architecture**: Scalable, distributed system with multiple specialized services
+- **Real-time Processing**: Asynchronous message queuing for efficient proof generation and verification
+
+### 🎯 Use Cases
+
+- **Age Verification**: Prove you're over 18 without revealing your exact age
+- **Identity Authentication**: Verify identity attributes for KYC compliance
+- **Privacy-Compliant Systems**: Build applications requiring identity verification while maintaining user privacy
+- **Decentralized Identity**: Create self-sovereign identity solutions
+
+### 🔐 Security & Privacy
+
+- **Zero-Knowledge Architecture**: No sensitive data is exposed during verification
+- **Blockchain Immutability**: Proof references are stored on Solana for tamper-proof verification
+- **Cryptographic Security**: Uses industry-standard Groth16 zero-knowledge proof system
+- **Decentralized Storage**: No central authority controls or stores personal data`
+
+## 🚀 Getting Started
 
 Follow these steps to set up and run the project locally:
 
-### 1. Smart Contract Setup
+### 📋 Prerequisites
 
-Navigate to the `smart-contract` directory and run the following command to verify and download any required tools:
+Before you begin, ensure you have the following installed on your system:
+
+- **Docker** and **Docker Compose** (for containerized deployment)
+- **Rust** (with Cargo)
+- **Solana CLI** tools (latest version)
+- **Go** 
+
+### 1. 🛠️ Smart Contract Setup
+
+Navigate to the smart contract directory and verify your development environment:
 
 ```bash
-cd smart-contract
-./run.sh check
+cd dev_tools/scripts/
+chmod +x smart_contract.sh
+smart_contract.sh check
 ```
 
-This will ensure that all dependencies (e.g., Solana CLI, Rust toolchain, Anchor) are installed with their latest versions.
+This command will:
+- Verify Rust toolchain installation
+- Check Solana CLI availability
+- Display version information for all tools
+
+If any tools are missing, the script will provide installation instructions.
 
 ---
 
-### 2. Install and Configure Solana CLI
+### 2. 🔗 Install and Configure Solana CLI
 
-Install the Solana CLI and configure it to use a local node by following the official Solana documentation:
-📖 [Solana CLI Installation Guide](https://solana.com/docs/intro/installation#solana-cli-basics)
+Install the Solana CLI and configure it for local development.
+
+📖 For detailed installation instructions, visit: [Solana CLI Installation Guide](https://solana.com/docs/intro/installation#solana-cli-basics)
 
 ---
 
-### 3. Run Local Validator & Deploy Smart Contract
-
-Start the local Solana test validator in a separate terminal:
+### 3. 🏃‍♂️ Start Local Solana Validator
 
 ```bash
-solana-test-validator
+# Start the validator (keep this running in a separate process)
+solana-test-validator --reset
 ```
 
-Then deploy the smart contract for development:
+The validator should be running on `http://localhost:8899` and `ws://localhost:8900`.
+
+---
+
+### 4. 🚀 Deploy Smart Contract
+
+Build and deploy the smart contract to your local validator:
 
 ```bash
-./run.sh deploy
+cd dev_tools/scripts/
+smart_contract.sh deploy
 ```
 
-This will compile the program and deploy it to the local validator.
+This will:
+- Compile the Rust smart contract to BPF bytecode
+- Deploy it to your local Solana validator
+- Display the program ID for use by the blockchain client
+- Copy program keypair into the blockchain-client directory
 
 ---
 
-### 4. Configure Wallet
+### 5. 🔑 Configure Wallet and Keys
 
-Copy your Solana wallet private key (JSON file) into the `blockchain-client` directory.
-This key will be used as the **program owner** and **transaction payer** for development purposes.
-
----
-
-### 5. Run the Application
-
-Start the full stack environment using Docker Compose:
+The blockchain client requires Solana keypairs for operation:
 
 ```bash
+cd system/blockchain-client
+
+# 1. Your Solana account keypair (for transaction signing and payment)
+cp ~/.config/solana/id.json ./id.json
+
+# Fund your account with test SOL (for transaction fees)
+solana airdrop 2 $(solana-keygen pubkey ./id.json)
+```
+
+**Important**: These keypairs are used for:
+- **identity_app-keypair.json**: Smart contract program ID and ownership
+- **id.json**: Transaction signing and fee payment
+
+---
+
+### 6. 🐳 Run the Complete System
+
+Start all services using Docker Compose:
+
+```bash
+# From the project root directory
 docker-compose up --build
 ```
 
-This will build and launch all necessary services defined in the Docker Compose configuration.
+This will launch:
+- **API Service** (port 8080): Identity management REST API
+- **Blockchain Client** (port 8001): ZKP generation and Solana integration
+- **RabbitMQ** (port 5672): Message queue for inter-service communication
+- **Reverse Proxy** (port 9000): Nginx proxy for load balancing
 
 ---
 
-## Architecture Overview
+### 7. 🧪 Verify Installation
 
-The system architecture is illustrated below:
+Test that everything is working correctly:
 
-<img width="2048" height="1188" alt="image" src="https://github.com/user-attachments/assets/8fdf2486-eec3-4d33-ae53-743c0872832b" />
+```bash
+# Check API health
+curl http://localhost:9000/api/health
+
+# Check services are running
+docker-compose ps
+
+# Test ZKP generation (if you have test tools)
+cd dev_tools/clis/api-test
+go run main.go
+```
+---
+
+## 🧪 Testing
+
+The project includes comprehensive test suites:
+
+```bash
+cd dev_tools/scripts/
+
+# Run all unit tests
+./test_runner.sh all
+
+# Run benchmarks
+./test_runner.sh bench
+```
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+e submitting PRs
+
+---
+
+## 🆘 Support
+
+For questions, issues, or contributions:
+
+- **Issues**: [GitHub Issues](https://github.com/bsc-digital-identity/digital-identity-system/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/bsc-digital-identity/digital-identity-system/discussions)
+- **Documentation**: Check the `/docs` directory for additional documentation
+
+---
