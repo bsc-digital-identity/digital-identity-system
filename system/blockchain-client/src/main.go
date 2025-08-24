@@ -3,9 +3,12 @@ package main
 import (
 	"blockchain-client/src/config"
 	"blockchain-client/src/external"
+	"fmt"
 	"pkg-common/logger"
 	"pkg-common/rabbitmq"
 	"pkg-common/utilities"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -46,6 +49,15 @@ func main() {
 	go solanaClient.StartService()
 
 	defaultLogger.Info("Blockchain client started and listening for messages")
+
+	router := gin.Default()
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
+	bc := router.Group("/v1/")
+	handler := external.NewSolanaReader()
+	bc.GET("verify", handler.Verify)
+
+	router.Run(fmt.Sprintf("0.0.0.0:%d", blockchainClientConfig.RestConf.Port))
 
 	select {}
 }
