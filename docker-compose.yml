@@ -30,6 +30,8 @@ services:
     build:
       context: ./system
       dockerfile: blockchain-client/Dockerfile
+    expose:
+      - "8888:8888"
     container_name: identity-blockchain-client
     restart: unless-stopped
 
