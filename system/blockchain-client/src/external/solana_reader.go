@@ -73,7 +73,7 @@ func (sr *SolanaReader) Verify(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
+		c.JSON(http.StatusNotFound, gin.H{
 			"error": "Could not retrieve transaction from solana: " + err.Error(),
 		})
 		return
@@ -81,7 +81,7 @@ func (sr *SolanaReader) Verify(c *gin.Context) {
 
 	accInfo, err := sr.RpcClient.GetAccountInfo(ctx, accountKey)
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
+		c.JSON(http.StatusNotFound, gin.H{
 			"error": "Could not fetch account info: " + err.Error(),
 		})
 		return

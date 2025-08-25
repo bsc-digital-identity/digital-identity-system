@@ -23,6 +23,4 @@ func main() {
 		InitGinRouter().
 		Build().
 		Start()
-
-	select {}
 }
