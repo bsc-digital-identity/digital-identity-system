@@ -26,6 +26,21 @@ func NewSolanaReader() *SolanaReader {
 	}
 }
 
+// Verify godoc
+// @Summary      Verify zkSNARK proof from Solana account
+// @Description  Retrieves transaction and account data from Solana, extracts zkSNARK proof and verifies it
+// @Tags         zkSNARK
+// @Accept       json
+// @Produce      json
+// @Param        signature query string true "Transaction signature"
+// @Param        account   query string true "Account public key"
+// @Param        size      query int    true "Proof size in bytes"
+// @Success      200 {object} map[string]interface{} "Successfully verified proof"
+// @Failure      400 {object} map[string]string "Invalid request: missing parameters"
+// @Failure      422 {object} map[string]string "Could not parse input"
+// @Failure      404 {object} map[string]string "Transaction or account not found"
+// @Failure      500 {object} map[string]string "Internal server error or verification failed"
+// @Router       /verify [get]
 func (sr *SolanaReader) Verify(c *gin.Context) {
 	signature := c.Query("signature")
 	accountStr := c.Query("account")

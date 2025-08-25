@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	amqp "github.com/rabbitmq/amqp091-go"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type AppConfig interface {
@@ -31,7 +33,8 @@ type AppBuilderInterface[T utilities.JsonConfigObj[U], U AppConfig] interface {
 	LoadConfig(configPath string) *AppBuilder[T, U]
 	InitRabbitmqConnection() *AppBuilder[T, U]
 	InitRabbitmqRegistries() *AppBuilder[T, U]
-	AddWorkerService(workerServices ...rabbitmq.WorkerService)
+	AddWorkerServices(workerServices ...rabbitmq.WorkerService)
+	AddSwagger()
 	AddGinRoute(routes ...rest.Route) *AppBuilder[T, U]
 	InitGinRouter() *AppBuilder[T, U]
 	Build() *Application
@@ -99,6 +102,18 @@ func (a *AppBuilder[T, U]) AddWorkerServices(workerServices ...rabbitmq.WorkerSe
 func (a *AppBuilder[T, U]) AddGinRoutes(routes ...rest.Route) *AppBuilder[T, U] {
 	a.Logger.Info("Adding Gin REST API routes to Application...")
 	a.Routes = append(a.Routes, routes...)
+	return a
+}
+
+func (a *AppBuilder[T, U]) AddSwagger() *AppBuilder[T, U] {
+	a.Logger.Info("Adding SwaggerUI...")
+	a.Routes = append(a.Routes, rest.NewRoute(
+		rest.GET,
+		"swagger",
+		"*any",
+		ginSwagger.WrapHandler(swaggerFiles.Handler),
+	))
+
 	return a
 }
 
