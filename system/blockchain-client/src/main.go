@@ -1,63 +1,28 @@
 package main
 
 import (
-	"blockchain-client/src/config"
 	"blockchain-client/src/external"
-	"fmt"
+	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
-	"pkg-common/rabbitmq"
-	"pkg-common/utilities"
-
-	"github.com/gin-gonic/gin"
+	"pkg-common/rest"
 )
 
 func main() {
-	// Initialize logger
-	logger.InitDefaultLogger(logger.GlobalLoggerConfig{
-		Args: []struct {
-			Key   string
-			Value string
-		}{
-			{"application", "blockchain-client"},
-			{"version", "1.0.0"},
-		},
-	})
-
-	defaultLogger := logger.Default()
-
-	blockchainClientConfig, err := utilities.ReadConfig[BlockchainClientConfigJson]("config.json")
-	blockchainLogger := logger.NewFromConfig(blockchainClientConfig.LoggerConf)
-
-	blockchainLogger.Infof("Loaded config %s", blockchainClientConfig)
-	solanaConfig, err := config.LoadSolanaKeys()
-	if err != nil {
-		blockchainLogger.Fatal(err, "Unable to load keypairs for solana")
-	}
-
-	conn, err := rabbitmq.ConnectToRabbitmq(
-		blockchainClientConfig.RabbimqConf.User,
-		blockchainClientConfig.RabbimqConf.Password,
-	)
-
-	rabbitmq.InitializeConsumerRegistry(conn, blockchainClientConfig.RabbimqConf.ConsumersConfig)
-	rabbitmq.InitializePublisherRegistry(conn, blockchainClientConfig.RabbimqConf.PublishersConfig)
-
-	defer conn.Close()
-
-	solanaClient := external.NewSolanaClient(solanaConfig)
-
-	go solanaClient.StartService()
-
-	defaultLogger.Info("Blockchain client started and listening for messages")
-
-	router := gin.Default()
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-	bc := router.Group("/v1/")
-	handler := external.NewSolanaReader()
-	bc.GET("verify", handler.Verify)
-
-	router.Run(fmt.Sprintf("0.0.0.0:%d", blockchainClientConfig.RestConf.Port))
+	appbuilder.New[BlockchainClientConfigJson]().
+		InitLogger(logger.GlobalLoggerConfig{}).
+		LoadConfig("config.json").
+		InitRabbitmqConnection().
+		InitRabbitmqRegistries().
+		AddWorkerServices(external.NewSolanaClient()).
+		AddGinRoutes(rest.NewRoute(
+			rest.GET,
+			"v1",
+			"verify",
+			external.NewSolanaReader().Verify,
+		)).
+		InitGinRouter().
+		Build().
+		Start()
 
 	select {}
 }
