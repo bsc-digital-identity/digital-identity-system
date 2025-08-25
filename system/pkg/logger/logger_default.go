@@ -2,11 +2,13 @@ package logger
 
 import "sync"
 
+type LoggerArg struct {
+	Key   string
+	Value string
+}
+
 type GlobalLoggerConfig struct {
-	Args []struct {
-		Key   string
-		Value string
-	}
+	Args []LoggerArg
 }
 
 var (

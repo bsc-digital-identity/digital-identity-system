@@ -27,15 +27,7 @@ const (
 )
 
 func main() {
-	logger.InitDefaultLogger(logger.GlobalLoggerConfig{
-		Args: []struct {
-			Key   string
-			Value string
-		}{
-			{"application", "api"},
-			{"version", "1.0.0"},
-		},
-	})
+	logger.InitDefaultLogger(logger.GlobalLoggerConfig{})
 	defaultLogger := logger.Default()
 
 	apiConfig, err := utilities.ReadConfig[ApiConfigJson]("config.json")
