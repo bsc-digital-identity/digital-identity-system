@@ -14,7 +14,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type Application struct {
+type application struct {
 	Logger         *logger.Logger
 	Addr           string
 	Conn           *amqp.Connection
@@ -26,7 +26,7 @@ type ApplicationInterface interface {
 	Start()
 }
 
-func (a *Application) Start() {
+func (a *application) Start() {
 	a.Logger.Info("Starting Application runtime...")
 
 	for _, ws := range a.WorkerServices {
