@@ -23,6 +23,6 @@ WORKDIR /root/app
 # solana keypairs
 COPY blockchain-client/*json ./
 
-EXPOSE 8001
+EXPOSE 8888
 
 CMD ["./blockchain-client"]

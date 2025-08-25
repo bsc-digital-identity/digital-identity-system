@@ -1,51 +1,34 @@
 package main
 
 import (
-	"blockchain-client/src/config"
 	"blockchain-client/src/external"
+	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
-	"pkg-common/rabbitmq"
-	"pkg-common/utilities"
+	"pkg-common/rest"
+
+	_ "blockchain-client/src/docs"
 )
 
+// @title           Digital Identity System - Blockchain Client
+// @version         1.0
+// @description     API to verify zkSNARK proofs on Solana blockchain
+// @host localhost:9000
+// @BasePath /bc/v1
 func main() {
-	// Initialize logger
-	logger.InitDefaultLogger(logger.GlobalLoggerConfig{
-		Args: []struct {
-			Key   string
-			Value string
-		}{
-			{"application", "blockchain-client"},
-			{"version", "1.0.0"},
-		},
-	})
-
-	defaultLogger := logger.Default()
-
-	blockchainClientConfig, err := utilities.ReadConfig[BlockchainClientConfigJson]("config.json")
-	blockchainLogger := logger.NewFromConfig(blockchainClientConfig.LoggerConf)
-
-	blockchainLogger.Infof("Loaded config %s", blockchainClientConfig)
-	solanaConfig, err := config.LoadSolanaKeys()
-	if err != nil {
-		blockchainLogger.Fatal(err, "Unable to load keypairs for solana")
-	}
-
-	conn, err := rabbitmq.ConnectToRabbitmq(
-		blockchainClientConfig.RabbimqConf.User,
-		blockchainClientConfig.RabbimqConf.Password,
-	)
-
-	rabbitmq.InitializeConsumerRegistry(conn, blockchainClientConfig.RabbimqConf.ConsumersConfig)
-	rabbitmq.InitializePublisherRegistry(conn, blockchainClientConfig.RabbimqConf.PublishersConfig)
-
-	defer conn.Close()
-
-	solanaClient := external.NewSolanaClient(solanaConfig)
-
-	go solanaClient.StartService()
-
-	defaultLogger.Info("Blockchain client started and listening for messages")
-
-	select {}
+	appbuilder.New[BlockchainClientConfigJson]().
+		InitLogger(logger.GlobalLoggerConfig{}).
+		LoadConfig("config.json").
+		InitRabbitmqConnection().
+		InitRabbitmqRegistries().
+		AddWorkerServices(external.NewSolanaClient()).
+		AddGinRoutes(rest.NewRoute(
+			rest.GET,
+			"v1",
+			"verify",
+			external.NewSolanaReader().Verify,
+		)).
+		AddSwagger().
+		InitGinRouter().
+		Build().
+		Start()
 }

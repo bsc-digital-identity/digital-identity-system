@@ -17,25 +17,39 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+const (
+	solanaClientServiceName    = "VerifiedPositiveConsumer"
+	failureQueuePublisherAlias = "IdentityFailurePublisher"
+	resultQueuePublisherAlias  = "IdentityResultsPublisher"
+)
+
 type SolanaClient struct {
 	Config    *config.SharedSolanaConfig
 	RpcClient *rpc.Client
 	Consumer  rabbitmq.IRabbitmqConsumer
 }
 
-func NewSolanaClient(config *config.SharedSolanaConfig) *SolanaClient {
-	return &SolanaClient{
-		RpcClient: rpc.New("http://host.docker.internal:8899"),
-		Consumer:  rabbitmq.GetConsumer("VerifiedPositiveConsumer"),
-		Config:    config,
+func NewSolanaClient() *SolanaClient {
+	solanaConfig, err := config.LoadSolanaKeys()
+	if err != nil {
+		logger.Default().Panicf(err, "Error when loading keys from solana: ")
 	}
 
+	return &SolanaClient{
+		RpcClient: rpc.New("http://host.docker.internal:8899"),
+		Consumer:  rabbitmq.GetConsumer(solanaClientServiceName),
+		Config:    solanaConfig,
+	}
+}
+
+func (sc *SolanaClient) GetServiceName() string {
+	return solanaClientServiceName
 }
 
 func (sc *SolanaClient) StartService() {
 	solanaLogger := logger.Default()
-	failurePublisher := rabbitmq.GetPublisher(rabbitmq.PublisherAlias("IdentityFailurePublisher"))
-	resultPublisher := rabbitmq.GetPublisher(rabbitmq.PublisherAlias("IdentityResultsPublisher"))
+	failurePublisher := rabbitmq.GetPublisher(failureQueuePublisherAlias)
+	resultPublisher := rabbitmq.GetPublisher(resultQueuePublisherAlias)
 
 	sc.Consumer.StartConsuming(func(d amqp.Delivery) {
 		var message incoming.ZkpVerifiedPositiveDto
