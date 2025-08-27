@@ -1,4 +1,4 @@
-package main
+package database
 
 import (
 	"api/src/model"
@@ -6,24 +6,11 @@ import (
 	"pkg-common/logger"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
-type ApiConfigJson struct {
-	loggerConf logger.LoggerConfigJson `json:"logger"`
-}
-
-type ApiConfig struct {
-	LoggerConf logger.LoggerConfig
-}
-
-func (acj ApiConfigJson) ConvertToDomain() ApiConfig {
-	return ApiConfig{
-		LoggerConf: acj.loggerConf.ConvertToDomain(),
-	}
-}
-
-func InitializeDev(db *gorm.DB) error {
+// should do something with this
+func InitializeDatabaseForDev() error {
+	db := GetDatabaseConnection()
 	// Example: Insert admin if not exists
 	admin_id, _ := uuid.NewRandom()
 	admin := model.Identity{

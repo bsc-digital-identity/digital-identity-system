@@ -2,6 +2,12 @@
     "logger": {
         "log_level": -1
     },
+    "rest": {
+        "port": 8080
+    },
+    "database": {
+        "connection_string": "./sqlite/DigitalIdentity.db"
+    },
     "rabbitmq": {
         "user": "id_system_api",
         "password": "id_system_api",

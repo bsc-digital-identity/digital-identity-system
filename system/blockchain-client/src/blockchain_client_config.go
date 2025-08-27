@@ -13,16 +13,16 @@ type BlockchainClientConfigJson struct {
 
 func (bccj BlockchainClientConfigJson) ConvertToDomain() BlockchainClientConfig {
 	return BlockchainClientConfig{
-		LoggerConf:  bccj.LoggerConf.ConvertToDomain(),
-		RabbimqConf: bccj.RabbitmqConf.ConvertToDomain(),
-		RestConf:    bccj.RestConf.ConvertToDomain(),
+		LoggerConf:   bccj.LoggerConf.ConvertToDomain(),
+		RabbitmqConf: bccj.RabbitmqConf.ConvertToDomain(),
+		RestConf:     bccj.RestConf.ConvertToDomain(),
 	}
 }
 
 type BlockchainClientConfig struct {
-	LoggerConf  logger.LoggerConfig
-	RabbimqConf rabbitmq.RabbitmqConfig
-	RestConf    BlockchainClientRestConfig
+	LoggerConf   logger.LoggerConfig
+	RabbitmqConf rabbitmq.RabbitmqConfig
+	RestConf     BlockchainClientRestConfig
 }
 
 func (bcc BlockchainClientConfig) GetLoggerConfig() logger.LoggerConfig {
@@ -30,7 +30,7 @@ func (bcc BlockchainClientConfig) GetLoggerConfig() logger.LoggerConfig {
 }
 
 func (bcc BlockchainClientConfig) GetRabbitmqConfig() rabbitmq.RabbitmqConfig {
-	return bcc.RabbimqConf
+	return bcc.RabbitmqConf
 }
 
 func (bcc BlockchainClientConfig) GetRestApiPort() uint16 {

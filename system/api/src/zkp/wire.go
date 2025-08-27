@@ -1,14 +1,14 @@
 package zkp
 
 import (
+	"api/src/queues"
+
 	"gorm.io/gorm"
 )
-
-import "api/src/queues"
 
 func Build(db *gorm.DB, consumer *queues.RabbitConsumer) (*ZeroKnowledgeProofHandler, error) {
 	zkpRepo := NewZkpRepository(db)
 	zkpService := NewZkpService(zkpRepo)
-	zkpHandler := NewZeroKnowledgeProofHandler(zkpService, consumer)
+	zkpHandler := NewZeroKnowledgeProofHandler(zkpService)
 	return zkpHandler, nil
 }
