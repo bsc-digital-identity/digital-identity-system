@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/verify": {
+        "/internal/verify": {
             "get": {
                 "description": "Retrieves transaction and account data from Solana, extracts zkSNARK proof and verifies it",
                 "consumes": [

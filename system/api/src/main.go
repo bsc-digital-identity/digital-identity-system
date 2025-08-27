@@ -8,8 +8,15 @@ import (
 	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
 	"pkg-common/rest"
+
+	_ "api/src/docs"
 )
 
+// @title           Digital Identity System API
+// @version         1.0
+// @description     API to manage identities and verify ZKP proofs
+// @host localhost:9000
+// @BasePath /v1
 func main() {
 	appbuilder.New[ApiConfigJson, ApiConfig]().
 		InitLogger(logger.GlobalLoggerConfig{}).

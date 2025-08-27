@@ -9,7 +9,7 @@
     "host": "localhost:9000",
     "basePath": "/bc/v1",
     "paths": {
-        "/verify": {
+        "/internal/verify": {
             "get": {
                 "description": "Retrieves transaction and account data from Solana, extracts zkSNARK proof and verifies it",
                 "consumes": [
