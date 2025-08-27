@@ -16,8 +16,8 @@ type zkpService struct {
 }
 
 // Constructor (injects the repo)
-func NewZkpService(repo ZkpRepository) ZkpService {
-	return &zkpService{repo: repo}
+func NewZkpService() ZkpService {
+	return &zkpService{repo: NewZkpRepository()}
 }
 
 // ProcessVerificationResult saves ZKP result into DB

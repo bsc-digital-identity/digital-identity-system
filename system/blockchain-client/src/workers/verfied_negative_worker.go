@@ -11,11 +11,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-const (
-	verifiedNegativeConsumerAlias = "VerifiedNegativeConsumer"
-	failureQueuePublisherAlias    = "IdentityFailurePublisher"
-)
-
 type VerifiedNegativeWorker struct {
 	Consumer rabbitmq.IRabbitmqConsumer
 }

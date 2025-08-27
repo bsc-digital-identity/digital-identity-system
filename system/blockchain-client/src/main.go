@@ -22,7 +22,7 @@ func main() {
 		InitRabbitmqConnection().
 		InitRabbitmqRegistries().
 		AddWorkerServices(
-			external.NewSolanaClient(),
+			workers.NewVerifiedPositiveWorker(),
 			workers.NewVerifiedNegativeWorker(),
 		).
 		AddGinRoutes(rest.NewRoute(

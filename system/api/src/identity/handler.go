@@ -2,16 +2,17 @@ package identity
 
 import (
 	"api/src/model"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	Service *Service
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{Service: service}
+func NewHandler() *Handler {
+	return &Handler{Service: NewService()}
 }
 
 func (h *Handler) CreateIdentity(c *gin.Context) {
@@ -67,7 +68,3 @@ func (h *Handler) QueueVerification(c *gin.Context) {
 	}
 	c.JSON(http.StatusAccepted, gin.H{"status": "queued"})
 }
-
-//func HandleVerifyResult(c *gin.Context) {
-//
-//}

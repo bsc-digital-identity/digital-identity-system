@@ -5,7 +5,7 @@ import (
 	"pkg-common/logger"
 )
 
-func RunMigrations() {
+func runMigrations() {
 	db := GetDatabaseConnection()
 	migtionLogger := logger.Default()
 	migtionLogger.Info("Running migrations for tables... ")

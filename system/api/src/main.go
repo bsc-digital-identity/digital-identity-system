@@ -1,9 +1,12 @@
 package main
 
 import (
-	builderextensions "api/src/builder_extensions"
+	"api/src/database"
+	"api/src/identity"
+	"api/src/zkp"
 	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
+	"pkg-common/rest"
 )
 
 func main() {
@@ -11,13 +14,17 @@ func main() {
 		InitLogger(logger.GlobalLoggerConfig{}).
 		LoadConfig("config.json").
 		WithOption(func(a *appbuilder.AppBuilder[ApiConfigJson, ApiConfig]) {
-			builderextensions.ConnectToDatabase(a)
-			builderextensions.RunMigrations(true)
+			database.ConnectToDatabase(a)
+			database.RunMigrations(true)
 		}).
 		InitRabbitmqConnection().
 		InitRabbitmqRegistries().
-		AddWorkerServices().
-		AddGinRoutes().
+		AddWorkerServices(zkp.NewZeroKnowledgeProofHandler()).
+		AddGinRoutes(
+			rest.NewRoute(rest.POST, "v1", "", identity.NewHandler().CreateIdentity),
+			rest.NewRoute(rest.GET, "v1", "/:id", identity.NewHandler().GetIdentity),
+			rest.NewRoute(rest.POST, "v1", "/verify", identity.NewHandler().QueueVerification),
+		).
 		AddSwagger().
 		InitGinRouter().
 		Build().

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"api/src/database"
 	"pkg-common/logger"
 	"pkg-common/rabbitmq"
 )
@@ -25,6 +26,10 @@ type ApiConfig struct {
 	RabbitmqConf rabbitmq.RabbitmqConfig
 	RestConf     ApiClientRestConfig
 	DatabaseConf ApiClientDatabaseConfig
+}
+
+type AppConfig interface {
+	database.DatabaseConfig
 }
 
 func (ac ApiConfig) GetLoggerConfig() logger.LoggerConfig {
