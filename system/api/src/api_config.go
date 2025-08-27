@@ -13,11 +13,11 @@ type ApiConfigJson struct {
 	DatabaseConf ApiClientDatabaseConfigJson `json:"database"`
 }
 
-func (acj ApiConfigJson) ConvertToDomain() ApiConfig {
+func (acj ApiConfigJson) MapToDomain() ApiConfig {
 	return ApiConfig{
-		LoggerConf:   acj.LoggerConf.ConvertToDomain(),
-		RabbitmqConf: acj.RabbitmqConf.ConvertToDomain(),
-		RestConf:     acj.RestConf.ConvertToDomain(),
+		LoggerConf:   acj.LoggerConf.MapToDomain(),
+		RabbitmqConf: acj.RabbitmqConf.MapToDomain(),
+		RestConf:     acj.RestConf.MapToDomain(),
 	}
 }
 
@@ -56,7 +56,7 @@ type ApiClientRestConfig struct {
 	Port uint16
 }
 
-func (acrcj ApiClientRestConfigJson) ConvertToDomain() ApiClientRestConfig {
+func (acrcj ApiClientRestConfigJson) MapToDomain() ApiClientRestConfig {
 	return ApiClientRestConfig{
 		Port: acrcj.Port,
 	}
@@ -70,7 +70,7 @@ type ApiClientDatabaseConfig struct {
 	ConnectionString string
 }
 
-func (acdcj ApiClientDatabaseConfigJson) ConvertToDomain() ApiClientDatabaseConfig {
+func (acdcj ApiClientDatabaseConfigJson) MapToDomain() ApiClientDatabaseConfig {
 	return ApiClientDatabaseConfig{
 		ConnectionString: acdcj.ConnectionString,
 	}

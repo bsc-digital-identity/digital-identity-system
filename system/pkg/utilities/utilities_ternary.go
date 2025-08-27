@@ -1,9 +1,9 @@
 package utilities
 
-func Ternary[T any](cond bool, eval_true, eval_false T) T {
+func Ternary[T any](cond bool, evalTrue, evalFalse T) T {
 	if cond {
-		return eval_true
+		return evalTrue
 	} else {
-		return eval_false
+		return evalFalse
 	}
 }

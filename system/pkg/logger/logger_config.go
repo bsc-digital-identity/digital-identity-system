@@ -10,7 +10,7 @@ type LoggerConfig struct {
 	LogLevel zerolog.Level
 }
 
-func (lcj LoggerConfigJson) ConvertToDomain() LoggerConfig {
+func (lcj LoggerConfigJson) MapToDomain() LoggerConfig {
 	return LoggerConfig{
 		LogLevel: zerolog.Level(lcj.logLevel),
 	}

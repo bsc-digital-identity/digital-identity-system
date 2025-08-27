@@ -21,7 +21,7 @@ type MockConfig struct {
 	Debug   bool
 }
 
-func (mcj MockConfigJson) ConvertToDomain() MockConfig {
+func (mcj MockConfigJson) MapToDomain() MockConfig {
 	return MockConfig{
 		Name:    mcj.Name,
 		Version: mcj.Version,
@@ -40,7 +40,7 @@ type MockItem struct {
 	Name string
 }
 
-func (mij MockItemJson) ConvertToDomain() MockItem {
+func (mij MockItemJson) MapToDomain() MockItem {
 	return MockItem{
 		ID:   mij.ID,
 		Name: mij.Name,

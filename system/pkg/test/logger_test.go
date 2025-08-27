@@ -272,7 +272,7 @@ func TestLoggerConfigConvertToDomain(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.config.ConvertToDomain()
+			result := tt.config.MapToDomain()
 			if result.LogLevel != tt.expected.LogLevel {
 				t.Errorf("Expected LogLevel %v, got %v", tt.expected.LogLevel, result.LogLevel)
 			}

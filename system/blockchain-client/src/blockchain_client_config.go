@@ -11,11 +11,11 @@ type BlockchainClientConfigJson struct {
 	RestConf     BlockchainClientRestConfigJson `json:"rest"`
 }
 
-func (bccj BlockchainClientConfigJson) ConvertToDomain() BlockchainClientConfig {
+func (bccj BlockchainClientConfigJson) MapToDomain() BlockchainClientConfig {
 	return BlockchainClientConfig{
-		LoggerConf:   bccj.LoggerConf.ConvertToDomain(),
-		RabbitmqConf: bccj.RabbitmqConf.ConvertToDomain(),
-		RestConf:     bccj.RestConf.ConvertToDomain(),
+		LoggerConf:   bccj.LoggerConf.MapToDomain(),
+		RabbitmqConf: bccj.RabbitmqConf.MapToDomain(),
+		RestConf:     bccj.RestConf.MapToDomain(),
 	}
 }
 
@@ -45,7 +45,7 @@ type BlockchainClientRestConfig struct {
 	Port uint16
 }
 
-func (bcrcj BlockchainClientRestConfigJson) ConvertToDomain() BlockchainClientRestConfig {
+func (bcrcj BlockchainClientRestConfigJson) MapToDomain() BlockchainClientRestConfig {
 	return BlockchainClientRestConfig{
 		Port: bcrcj.Port,
 	}
