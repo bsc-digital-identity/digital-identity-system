@@ -1,6 +1,8 @@
 package model
 
 import (
+	"pkg-common/utilities"
+
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/witness"
 )
@@ -17,6 +19,10 @@ type ZeroKnowledgeProof struct {
 type ZeroKnowledgeProofVerificationRequest struct {
 	IdentityId string `json:"identity_id"`
 	Schema     string `json:"schema"`
+}
+
+func (req ZeroKnowledgeProofVerificationRequest) Serialize() ([]byte, error) {
+	return utilities.Serialize[ZeroKnowledgeProofVerificationRequest](req)
 }
 
 // TODO: Naming

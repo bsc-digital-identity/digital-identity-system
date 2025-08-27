@@ -1,8 +1,10 @@
 package zkp
 
 import (
+	"api/src/database"
 	"api/src/model"
 	"errors"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -13,8 +15,8 @@ type ZkpRepository interface {
 	SaveZeroKnowledgeProof(zkp *model.ZeroKnowledgeProof) error
 }
 
-func NewZkpRepository(db *gorm.DB) ZkpRepository {
-	return &zkpRepository{db: db}
+func NewZkpRepository() ZkpRepository {
+	return &zkpRepository{db: database.GetDatabaseConnection()}
 }
 
 type zkpRepository struct {

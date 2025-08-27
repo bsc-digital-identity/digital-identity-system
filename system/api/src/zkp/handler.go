@@ -18,11 +18,15 @@ type ZeroKnowledgeProofHandler struct {
 	consumer rabbitmq.IRabbitmqConsumer
 }
 
-func NewZeroKnowledgeProofHandler(service ZkpService) *ZeroKnowledgeProofHandler {
+func NewZeroKnowledgeProofHandler() *ZeroKnowledgeProofHandler {
 	return &ZeroKnowledgeProofHandler{
-		service:  service,
+		service:  NewZkpService(),
 		consumer: rabbitmq.GetConsumer(proofResultsConsumerAlias),
 	}
+}
+
+func (h *ZeroKnowledgeProofHandler) GetServiceName() string {
+	return proofResultsConsumerAlias
 }
 
 func (h *ZeroKnowledgeProofHandler) StartService() {

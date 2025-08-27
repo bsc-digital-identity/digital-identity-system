@@ -1,4 +1,4 @@
-package external
+package workers
 
 import (
 	"blockchain-client/src/config"
@@ -17,36 +17,30 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-const (
-	solanaClientServiceName    = "VerifiedPositiveConsumer"
-	failureQueuePublisherAlias = "IdentityFailurePublisher"
-	resultQueuePublisherAlias  = "IdentityResultsPublisher"
-)
-
-type SolanaClient struct {
+type VerifiedPositiveWorker struct {
 	Config    *config.SharedSolanaConfig
 	RpcClient *rpc.Client
 	Consumer  rabbitmq.IRabbitmqConsumer
 }
 
-func NewSolanaClient() *SolanaClient {
+func NewVerifiedPositiveWorker() *VerifiedPositiveWorker {
 	solanaConfig, err := config.LoadSolanaKeys()
 	if err != nil {
 		logger.Default().Panicf(err, "Error when loading keys from solana: ")
 	}
 
-	return &SolanaClient{
+	return &VerifiedPositiveWorker{
 		RpcClient: rpc.New("http://host.docker.internal:8899"),
 		Consumer:  rabbitmq.GetConsumer(solanaClientServiceName),
 		Config:    solanaConfig,
 	}
 }
 
-func (sc *SolanaClient) GetServiceName() string {
+func (sc *VerifiedPositiveWorker) GetServiceName() string {
 	return solanaClientServiceName
 }
 
-func (sc *SolanaClient) StartService() {
+func (sc *VerifiedPositiveWorker) StartService() {
 	solanaLogger := logger.Default()
 	failurePublisher := rabbitmq.GetPublisher(failureQueuePublisherAlias)
 	resultPublisher := rabbitmq.GetPublisher(resultQueuePublisherAlias)
@@ -97,7 +91,7 @@ func (sc *SolanaClient) StartService() {
 }
 
 // TODO: add option for the users to be payers instead of owners
-func (sc *SolanaClient) publishZkpToSolana(
+func (sc *VerifiedPositiveWorker) publishZkpToSolana(
 	zkpResult zkp.ZkpResult,
 	errCh chan error,
 	sigCh chan solana.Signature) {
@@ -114,7 +108,7 @@ func (sc *SolanaClient) publishZkpToSolana(
 }
 
 // creates new account and stores zkp data for future retrival
-func (sc *SolanaClient) createAndPopulateZkpAccount(
+func (sc *VerifiedPositiveWorker) createAndPopulateZkpAccount(
 	zkpData []byte,
 	errCh chan error,
 	sigCh chan solana.Signature) {
@@ -213,7 +207,7 @@ func (sc *SolanaClient) createAndPopulateZkpAccount(
 	sigCh <- transactionSignature
 }
 
-func (sc *SolanaClient) createZkpAccount(
+func (sc *VerifiedPositiveWorker) createZkpAccount(
 	zkpData []byte,
 	errCh chan error,
 	accountCh chan solana.PrivateKey) {

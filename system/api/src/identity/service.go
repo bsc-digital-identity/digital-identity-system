@@ -2,18 +2,20 @@ package identity
 
 import (
 	"api/src/model"
-	"api/src/queues"
 	"fmt"
+	"pkg-common/rabbitmq"
+
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	Repo   Repository
-	Rabbit *queues.RabbitPublisher
+	Repo              Repository
+	RabbitmqPublisher rabbitmq.IRabbitmqPublisher
 }
 
-func NewService(repo Repository, rabbit *queues.RabbitPublisher) *Service {
-	return &Service{Repo: repo, Rabbit: rabbit}
+func NewService() *Service {
+	// TODO: remove hardcoding
+	return &Service{Repo: NewRepository(), RabbitmqPublisher: rabbitmq.GetPublisher("VerifiersUnverifiedPublisher")}
 }
 
 func (s *Service) CreateIdentity(name string, parentId *int) (*model.Identity, error) {
@@ -43,5 +45,5 @@ func (s *Service) GetIdentityById(id string) (*model.Identity, error) {
 }
 
 func (s *Service) QueueVerification(req model.ZeroKnowledgeProofVerificationRequest) error {
-	return s.Rabbit.PublishZkpVerificationRequest(req)
+	return s.RabbitmqPublisher.Publish(req)
 }
