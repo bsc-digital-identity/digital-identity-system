@@ -6,7 +6,7 @@ info:
   title: Digital Identity System - Blockchain Client
   version: "1.0"
 paths:
-  /verify:
+  /internal/verify:
     get:
       consumes:
       - application/json

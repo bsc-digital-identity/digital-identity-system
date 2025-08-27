@@ -40,7 +40,7 @@ func NewSolanaReader() *SolanaReader {
 // @Failure      422 {object} map[string]string "Could not parse input"
 // @Failure      404 {object} map[string]string "Transaction or account not found"
 // @Failure      500 {object} map[string]string "Internal server error or verification failed"
-// @Router       /verify [get]
+// @Router       /internal/verify [get]
 func (sr *SolanaReader) Verify(c *gin.Context) {
 	signature := c.Query("signature")
 	accountStr := c.Query("account")
