@@ -2,31 +2,32 @@ package zkp
 
 import (
 	"api/src/model"
-	"api/src/queues"
 	"encoding/json"
 	"pkg-common/logger"
+	"pkg-common/rabbitmq"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+const (
+	proofResultsConsumerAlias = "ProofResultsConsumer"
+)
+
 type ZeroKnowledgeProofHandler struct {
 	service  ZkpService
-	consumer *queues.RabbitConsumer
+	consumer rabbitmq.IRabbitmqConsumer
 }
 
-func NewZeroKnowledgeProofHandler(service ZkpService, consumer *queues.RabbitConsumer) *ZeroKnowledgeProofHandler {
-	h := &ZeroKnowledgeProofHandler{
+func NewZeroKnowledgeProofHandler(service ZkpService) *ZeroKnowledgeProofHandler {
+	return &ZeroKnowledgeProofHandler{
 		service:  service,
-		consumer: consumer,
+		consumer: rabbitmq.GetConsumer(proofResultsConsumerAlias),
 	}
-	// Start consuming in background
-	go h.listenResultsQueue()
-	return h
 }
 
-func (h *ZeroKnowledgeProofHandler) listenResultsQueue() {
+func (h *ZeroKnowledgeProofHandler) StartService() {
 	zkpLogger := logger.Default()
-	err := h.consumer.StartConsume(func(d amqp.Delivery) {
+	h.consumer.StartConsuming(func(d amqp.Delivery) {
 		var resp model.ZeroKnowledgeProofVerificationResponse
 		if err := json.Unmarshal(d.Body, &resp); err != nil {
 			zkpLogger.Errorf(err, "Failed to unmarshal result")
@@ -43,8 +44,6 @@ func (h *ZeroKnowledgeProofHandler) listenResultsQueue() {
 			)
 		}
 	})
-	if err != nil {
-		zkpLogger.Errorf(err, "Failed to register result queue consumer")
-	}
+
 	zkpLogger.Info("Listening for ZKP verification results...")
 }

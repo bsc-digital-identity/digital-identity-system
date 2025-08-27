@@ -19,9 +19,9 @@ type AppConfig interface {
 	GetRestApiPort() uint16
 }
 
-type appBuilder[T utilities.JsonConfigObj[U], U AppConfig] struct {
-	logger         *logger.Logger
-	config         U
+type AppBuilder[T utilities.JsonConfigObj[U], U AppConfig] struct {
+	Logger         *logger.Logger
+	Config         U
 	conn           *amqp.Connection
 	workerServices []rabbitmq.WorkerService
 	routes         []rest.Route
@@ -30,7 +30,9 @@ type appBuilder[T utilities.JsonConfigObj[U], U AppConfig] struct {
 
 type AppBuilderInterface[T utilities.JsonConfigObj[U], U AppConfig] interface {
 	InitLogger(loggerArgs logger.GlobalLoggerConfig) AppBuilderInterface[T, U]
+	ResolveEnvironment() AppBuilderInterface[T, U]
 	LoadConfig(configPath string) AppBuilderInterface[T, U]
+	WithOption(func(*AppBuilder[T, U])) AppBuilderInterface[T, U]
 	InitRabbitmqConnection() AppBuilderInterface[T, U]
 	InitRabbitmqRegistries() AppBuilderInterface[T, U]
 	AddWorkerServices(workerServices ...rabbitmq.WorkerService) AppBuilderInterface[T, U]
@@ -41,33 +43,38 @@ type AppBuilderInterface[T utilities.JsonConfigObj[U], U AppConfig] interface {
 }
 
 func New[T utilities.JsonConfigObj[U], U AppConfig]() AppBuilderInterface[T, U] {
-	return &appBuilder[T, U]{}
+	return &AppBuilder[T, U]{}
 }
 
-func (a *appBuilder[T, U]) InitLogger(loggerArgs logger.GlobalLoggerConfig) AppBuilderInterface[T, U] {
+func (a *AppBuilder[T, U]) InitLogger(loggerArgs logger.GlobalLoggerConfig) AppBuilderInterface[T, U] {
 	logger.InitDefaultLogger(loggerArgs)
-	a.logger = logger.Default()
-	a.logger.Info("Logger initialized")
+	a.Logger = logger.Default()
+	a.Logger.Info("Logger initialized")
 
 	return a
 }
 
-func (a *appBuilder[T, U]) LoadConfig(filePath string) AppBuilderInterface[T, U] {
-	a.logger.Infof("Preparing to load config from %s ...", filePath)
+func (a *AppBuilder[T, U]) LoadConfig(filePath string) AppBuilderInterface[T, U] {
+	a.Logger.Infof("Preparing to load config from %s ...", filePath)
 	jsonConfig, err := utilities.ReadConfig[T, U](filePath)
 	if err != nil {
-		a.logger.Error(err, "Failed to load config")
+		a.Logger.Error(err, "Failed to load config")
 		panic(err)
 	}
 
-	a.config = jsonConfig
-	a.logger.Info("Config successfully loaded.")
+	a.Config = jsonConfig
+	a.Logger.Info("Config successfully loaded.")
 	return a
 }
 
-func (a *appBuilder[T, U]) InitRabbitmqConnection() AppBuilderInterface[T, U] {
-	a.logger.Info("Preparing to connect to Rabbitmq server...")
-	rabbitmqConfig := a.config.GetRabbitmqConfig()
+func (a *AppBuilder[T, U]) ResolveEnvironment() AppBuilderInterface[T, U] {
+	// TODO: implement later
+	return a
+}
+
+func (a *AppBuilder[T, U]) InitRabbitmqConnection() AppBuilderInterface[T, U] {
+	a.Logger.Info("Preparing to connect to Rabbitmq server...")
+	rabbitmqConfig := a.Config.GetRabbitmqConfig()
 	conn, err := rabbitmq.ConnectToRabbitmq(
 		rabbitmqConfig.User,
 		rabbitmqConfig.Password,
@@ -77,36 +84,36 @@ func (a *appBuilder[T, U]) InitRabbitmqConnection() AppBuilderInterface[T, U] {
 	}
 
 	a.conn = conn
-	a.logger.Info("Connection with Rabbitmq server established")
+	a.Logger.Info("Connection with Rabbitmq server established")
 
 	return a
 }
 
-func (a *appBuilder[T, U]) InitRabbitmqRegistries() AppBuilderInterface[T, U] {
-	a.logger.Info("Initializing Rabbitmq registries from config")
-	rabbitmqConf := a.config.GetRabbitmqConfig()
+func (a *AppBuilder[T, U]) InitRabbitmqRegistries() AppBuilderInterface[T, U] {
+	a.Logger.Info("Initializing Rabbitmq registries from config")
+	rabbitmqConf := a.Config.GetRabbitmqConfig()
 
 	rabbitmq.InitializeConsumerRegistry(a.conn, rabbitmqConf.ConsumersConfig)
 	rabbitmq.InitializePublisherRegistry(a.conn, rabbitmqConf.PublishersConfig)
-	a.logger.Info("Successfully initialized Rabbitmq registries from config")
+	a.Logger.Info("Successfully initialized Rabbitmq registries from config")
 
 	return a
 }
 
-func (a *appBuilder[T, U]) AddWorkerServices(workerServices ...rabbitmq.WorkerService) AppBuilderInterface[T, U] {
-	a.logger.Info("Adding Worker Services to Application...")
+func (a *AppBuilder[T, U]) AddWorkerServices(workerServices ...rabbitmq.WorkerService) AppBuilderInterface[T, U] {
+	a.Logger.Info("Adding Worker Services to Application...")
 	a.workerServices = append(a.workerServices, workerServices...)
 	return a
 }
 
-func (a *appBuilder[T, U]) AddGinRoutes(routes ...rest.Route) AppBuilderInterface[T, U] {
-	a.logger.Info("Adding Gin REST API routes to Application...")
+func (a *AppBuilder[T, U]) AddGinRoutes(routes ...rest.Route) AppBuilderInterface[T, U] {
+	a.Logger.Info("Adding Gin REST API routes to Application...")
 	a.routes = append(a.routes, routes...)
 	return a
 }
 
-func (a *appBuilder[T, U]) AddSwagger() AppBuilderInterface[T, U] {
-	a.logger.Info("Adding SwaggerUI...")
+func (a *AppBuilder[T, U]) AddSwagger() AppBuilderInterface[T, U] {
+	a.Logger.Info("Adding SwaggerUI...")
 	a.routes = append(a.routes, rest.NewRoute(
 		rest.GET,
 		"swagger",
@@ -117,12 +124,12 @@ func (a *appBuilder[T, U]) AddSwagger() AppBuilderInterface[T, U] {
 	return a
 }
 
-func (a *appBuilder[T, U]) InitGinRouter() AppBuilderInterface[T, U] {
-	a.logger.Info("Initializing Gin Router...")
+func (a *AppBuilder[T, U]) InitGinRouter() AppBuilderInterface[T, U] {
+	a.Logger.Info("Initializing Gin Router...")
 	router := gin.Default()
 
 	groups := map[string]*gin.RouterGroup{}
-	a.logger.Info("Registering REST API routes...")
+	a.Logger.Info("Registering REST API routes...")
 	for _, r := range a.routes {
 		if _, exists := groups[r.Group]; !exists {
 			groups[r.Group] = router.Group("/" + r.Group)
@@ -140,21 +147,26 @@ func (a *appBuilder[T, U]) InitGinRouter() AppBuilderInterface[T, U] {
 		case rest.PATCH:
 			group.PATCH(r.Path, r.HandlerFunc)
 		default:
-			a.logger.Warnf("Unrecognized HTTP method: %s", r.Method)
+			a.Logger.Warnf("Unrecognized HTTP method: %s", r.Method)
 		}
 	}
 
 	a.engine = router
-	a.logger.Info("Successfully registered REST API routes.")
+	a.Logger.Info("Successfully registered REST API routes.")
 	return a
 }
 
-func (a *appBuilder[T, U]) Build() ApplicationInterface {
+func (a *AppBuilder[T, U]) Build() ApplicationInterface {
 	return &application{
-		Logger:         a.logger,
-		Addr:           fmt.Sprintf("0.0.0.0:%d", a.config.GetRestApiPort()),
+		Logger:         a.Logger,
+		Addr:           fmt.Sprintf("0.0.0.0:%d", a.Config.GetRestApiPort()),
 		Conn:           a.conn,
 		WorkerServices: a.workerServices,
 		Engine:         a.engine,
 	}
+}
+
+func (a *AppBuilder[T, U]) WithOption(fn func(*AppBuilder[T, U])) AppBuilderInterface[T, U] {
+	fn(a)
+	return a
 }
