@@ -16,7 +16,7 @@ type RabbitmqConfig struct {
 	ConsumersConfig  []RabbitmqConsumerConfig
 }
 
-func (rcj RabbimqConfigJson) ConvertToDomain() RabbitmqConfig {
+func (rcj RabbimqConfigJson) MapToDomain() RabbitmqConfig {
 	return RabbitmqConfig{
 		User:     rcj.User,
 		Password: rcj.Password,
@@ -43,7 +43,7 @@ type RabbitmqPublishersConfig struct {
 	RoutingKey     string
 }
 
-func (rpcj RabbitmqPublishersConfigJson) ConvertToDomain() RabbitmqPublishersConfig {
+func (rpcj RabbitmqPublishersConfigJson) MapToDomain() RabbitmqPublishersConfig {
 	return RabbitmqPublishersConfig{
 		PublisherAlias: PublisherAlias(rpcj.PublisherAlias),
 		Exchange:       rpcj.Exchange,
@@ -63,7 +63,7 @@ type RabbitmqConsumerConfig struct {
 	QueueName     string
 }
 
-func (rccj RabbitmqConsumerConfigJson) ConvertToDomain() RabbitmqConsumerConfig {
+func (rccj RabbitmqConsumerConfigJson) MapToDomain() RabbitmqConsumerConfig {
 	return RabbitmqConsumerConfig{
 		ConsumerAlias: ConsumerAlias(rccj.ConsumerAlias),
 		QueueName:     rccj.QueueName,

@@ -6,7 +6,7 @@ import (
 )
 
 type JsonConfigObj[T any] interface {
-	ConvertToDomain() T
+	MapToDomain() T
 }
 
 func ReadConfig[T JsonConfigObj[U], U any](file string) (U, error) {
@@ -23,13 +23,13 @@ func ReadConfig[T JsonConfigObj[U], U any](file string) (U, error) {
 		return empty, err
 	}
 
-	return config.ConvertToDomain(), nil
+	return config.MapToDomain(), nil
 }
 
 func ConvertJsonArrayToDomain[T JsonConfigObj[U], U any](jsonArray []T) []U {
 	var domainArray []U
 	for _, item := range jsonArray {
-		domainArray = append(domainArray, item.ConvertToDomain())
+		domainArray = append(domainArray, item.MapToDomain())
 	}
 	return domainArray
 }

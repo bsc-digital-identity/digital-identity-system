@@ -25,6 +25,7 @@ type AppBuilder[T utilities.JsonConfigObj[U], U AppConfig] struct {
 	conn           *amqp.Connection
 	workerServices []rabbitmq.WorkerService
 	routes         []rest.Route
+	middleware     []rest.Middleware
 	engine         *gin.Engine
 }
 
@@ -38,6 +39,7 @@ type AppBuilderInterface[T utilities.JsonConfigObj[U], U AppConfig] interface {
 	AddWorkerServices(workerServices ...rabbitmq.WorkerService) AppBuilderInterface[T, U]
 	AddSwagger() AppBuilderInterface[T, U]
 	AddGinRoutes(routes ...rest.Route) AppBuilderInterface[T, U]
+	AddGinMiddleware(middlewares ...rest.Middleware) AppBuilderInterface[T, U]
 	InitGinRouter() AppBuilderInterface[T, U]
 	Build() ApplicationInterface
 }
@@ -69,6 +71,11 @@ func (a *AppBuilder[T, U]) LoadConfig(filePath string) AppBuilderInterface[T, U]
 
 func (a *AppBuilder[T, U]) ResolveEnvironment() AppBuilderInterface[T, U] {
 	// TODO: implement later
+	return a
+}
+
+func (a *AppBuilder[T, U]) WithOption(fn func(*AppBuilder[T, U])) AppBuilderInterface[T, U] {
+	fn(a)
 	return a
 }
 
@@ -112,6 +119,12 @@ func (a *AppBuilder[T, U]) AddGinRoutes(routes ...rest.Route) AppBuilderInterfac
 	return a
 }
 
+func (a *AppBuilder[T, U]) AddGinMiddleware(middlewares ...rest.Middleware) AppBuilderInterface[T, U] {
+	a.Logger.Info("Adding Gin middlewares to Application...")
+	a.middleware = append(a.middleware, middlewares...)
+	return a
+}
+
 func (a *AppBuilder[T, U]) AddSwagger() AppBuilderInterface[T, U] {
 	a.Logger.Info("Adding SwaggerUI...")
 	a.routes = append(a.routes, rest.NewRoute(
@@ -129,6 +142,22 @@ func (a *AppBuilder[T, U]) InitGinRouter() AppBuilderInterface[T, U] {
 	router := gin.Default()
 
 	groups := map[string]*gin.RouterGroup{}
+
+	a.Logger.Info("Registering Gin middleware...")
+	for _, m := range a.middleware {
+		// Global scope
+		if m.Group == "*" {
+			router.Use(m.Handler)
+			continue
+		}
+
+		// Group scope
+		if _, exists := groups[m.Group]; !exists {
+			groups[m.Group] = router.Group("/" + m.Group)
+		}
+		groups[m.Group].Use(m.Handler)
+	}
+
 	a.Logger.Info("Registering REST API routes...")
 	for _, r := range a.routes {
 		if _, exists := groups[r.Group]; !exists {
@@ -164,9 +193,4 @@ func (a *AppBuilder[T, U]) Build() ApplicationInterface {
 		WorkerServices: a.workerServices,
 		Engine:         a.engine,
 	}
-}
-
-func (a *AppBuilder[T, U]) WithOption(fn func(*AppBuilder[T, U])) AppBuilderInterface[T, U] {
-	fn(a)
-	return a
 }

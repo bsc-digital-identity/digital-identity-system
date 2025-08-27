@@ -1,4 +1,4 @@
-package external
+package httpclient
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// TODO: implement http client for internal communication
 func ReqeuestBase[T any, U any](urlAppendix, method string, apiErrorCh chan error, apiResponseCh chan T, body U) {
 	// TODO: steup envs
 	// urlPrefix := os.Getenv("API_URL")

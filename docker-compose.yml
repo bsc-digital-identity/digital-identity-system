@@ -9,7 +9,6 @@ services:
     depends_on:
       - api
       - rabbitmq
-    restart: unless-stopped
 
   api:
     build:
@@ -22,7 +21,6 @@ services:
       - ENV_TYPE=dev
     expose:
       - "8080:8080"
-    restart: unless-stopped
     volumes:
       - ./system/api/sqlite:/root/app/sqlite
 
@@ -33,7 +31,6 @@ services:
     expose:
       - "8888:8888"
     container_name: identity-blockchain-client
-    restart: unless-stopped
 
   rabbitmq:
     build:
@@ -44,4 +41,3 @@ services:
     expose:
       - "5672:5672"
       - "15672:15672"
-    restart: unless-stopped

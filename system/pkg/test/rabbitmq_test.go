@@ -71,7 +71,7 @@ func TestRabbitmqConfigConvertToDomain(t *testing.T) {
 		ConsumersConfig:  []rabbitmq.RabbitmqConsumerConfigJson{consumerConfig},
 	}
 
-	result := config.ConvertToDomain()
+	result := config.MapToDomain()
 
 	if result.User != "testuser" {
 		t.Errorf("Expected User to be 'testuser', got '%s'", result.User)
@@ -94,7 +94,7 @@ func TestRabbitmqPublishersConfigConvertToDomain(t *testing.T) {
 		RoutingKey:     "test-routing-key",
 	}
 
-	result := config.ConvertToDomain()
+	result := config.MapToDomain()
 
 	if string(result.PublisherAlias) != "test-publisher" {
 		t.Errorf("Expected PublisherAlias to be 'test-publisher', got '%s'", result.PublisherAlias)
@@ -114,7 +114,7 @@ func TestRabbitmqConsumerConfigConvertToDomain(t *testing.T) {
 		QueueName:     "test-queue",
 	}
 
-	result := config.ConvertToDomain()
+	result := config.MapToDomain()
 
 	if string(result.ConsumerAlias) != "test-consumer" {
 		t.Errorf("Expected ConsumerAlias to be 'test-consumer', got '%s'", result.ConsumerAlias)
@@ -315,7 +315,7 @@ func TestRabbitmqConfigArrayConversion(t *testing.T) {
 		ConsumersConfig:  consumerConfigs,
 	}
 
-	result := config.ConvertToDomain()
+	result := config.MapToDomain()
 
 	if len(result.PublishersConfig) != 2 {
 		t.Errorf("Expected 2 publisher configs, got %d", len(result.PublishersConfig))
@@ -378,6 +378,6 @@ func BenchmarkConfigConversion(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		config.ConvertToDomain()
+		config.MapToDomain()
 	}
 }

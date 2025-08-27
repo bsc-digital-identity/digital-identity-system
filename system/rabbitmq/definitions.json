@@ -58,7 +58,7 @@
       "vhost": "/",
       "configure": "^$",
       "write": "verifiers\\..*",
-      "read": "identity"
+      "read": "identity|proof\\.(results|failures)"
     },
     {
       "user": "id_system_blockchain",

@@ -1,7 +1,7 @@
 package workers
 
 import (
-	"blockchain-client/src/config"
+	"blockchain-client/src/external"
 	"blockchain-client/src/types/incoming"
 
 	"blockchain-client/src/zkp"
@@ -18,13 +18,13 @@ import (
 )
 
 type VerifiedPositiveWorker struct {
-	Config    *config.SharedSolanaConfig
+	Config    *external.SharedSolanaConfig
 	RpcClient *rpc.Client
 	Consumer  rabbitmq.IRabbitmqConsumer
 }
 
 func NewVerifiedPositiveWorker() *VerifiedPositiveWorker {
-	solanaConfig, err := config.LoadSolanaKeys()
+	solanaConfig, err := external.LoadSolanaKeys()
 	if err != nil {
 		logger.Default().Panicf(err, "Error when loading keys from solana: ")
 	}

@@ -1,4 +1,4 @@
-package config
+package external
 
 import (
 	"pkg-common/logger"

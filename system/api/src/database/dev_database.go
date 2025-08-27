@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// should do something with this
+// TODO: should do something with this
 func InitializeDatabaseForDev() error {
 	db := GetDatabaseConnection()
 	// Example: Insert admin if not exists

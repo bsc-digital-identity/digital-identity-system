@@ -3,6 +3,7 @@ package main
 import (
 	"api/src/database"
 	"api/src/identity"
+	"api/src/middleware"
 	"api/src/zkp"
 	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
@@ -12,6 +13,7 @@ import (
 func main() {
 	appbuilder.New[ApiConfigJson, ApiConfig]().
 		InitLogger(logger.GlobalLoggerConfig{}).
+		ResolveEnvironment().
 		LoadConfig("config.json").
 		WithOption(func(a *appbuilder.AppBuilder[ApiConfigJson, ApiConfig]) {
 			database.ConnectToDatabase(a)
@@ -20,10 +22,14 @@ func main() {
 		InitRabbitmqConnection().
 		InitRabbitmqRegistries().
 		AddWorkerServices(zkp.NewZeroKnowledgeProofHandler()).
+		AddGinMiddleware(
+			rest.NewMiddleware("v1", middleware.PublicAuthMiddleware()),
+			rest.NewMiddleware("v1/internal", rest.InternalAuthMiddleware()),
+		).
 		AddGinRoutes(
-			rest.NewRoute(rest.POST, "v1", "", identity.NewHandler().CreateIdentity),
-			rest.NewRoute(rest.GET, "v1", "/:id", identity.NewHandler().GetIdentity),
-			rest.NewRoute(rest.POST, "v1", "/verify", identity.NewHandler().QueueVerification),
+			rest.NewRoute(rest.POST, "v1", "identity", identity.NewHandler().CreateIdentity),
+			rest.NewRoute(rest.GET, "v1", "identity/:id", identity.NewHandler().GetIdentity),
+			rest.NewRoute(rest.POST, "v1", "identity/verify", identity.NewHandler().QueueVerification),
 		).
 		AddSwagger().
 		InitGinRouter().

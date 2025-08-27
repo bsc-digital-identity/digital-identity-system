@@ -18,6 +18,7 @@ import (
 func main() {
 	appbuilder.New[BlockchainClientConfigJson]().
 		InitLogger(logger.GlobalLoggerConfig{}).
+		ResolveEnvironment().
 		LoadConfig("config.json").
 		InitRabbitmqConnection().
 		InitRabbitmqRegistries().
@@ -25,12 +26,12 @@ func main() {
 			workers.NewVerifiedPositiveWorker(),
 			workers.NewVerifiedNegativeWorker(),
 		).
-		AddGinRoutes(rest.NewRoute(
-			rest.GET,
-			"v1",
-			"verify",
-			external.NewSolanaReader().Verify,
-		)).
+		AddGinMiddleware(
+			rest.NewMiddleware("*", rest.InternalAuthMiddleware()),
+		).
+		AddGinRoutes(
+			rest.NewRoute(rest.GET, "v1/internal", "verify", external.NewSolanaReader().Verify),
+		).
 		AddSwagger().
 		InitGinRouter().
 		Build().
