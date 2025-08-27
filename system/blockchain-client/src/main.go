@@ -2,6 +2,7 @@ package main
 
 import (
 	"blockchain-client/src/external"
+	"blockchain-client/src/workers"
 	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
 	"pkg-common/rest"
@@ -20,7 +21,10 @@ func main() {
 		LoadConfig("config.json").
 		InitRabbitmqConnection().
 		InitRabbitmqRegistries().
-		AddWorkerServices(external.NewSolanaClient()).
+		AddWorkerServices(
+			external.NewSolanaClient(),
+			workers.NewVerifiedNegativeWorker(),
+		).
 		AddGinRoutes(rest.NewRoute(
 			rest.GET,
 			"v1",
