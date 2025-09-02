@@ -1,4 +1,4 @@
-package zkp
+package zkpfailed
 
 import (
 	"api/src/model"
@@ -10,26 +10,26 @@ import (
 )
 
 const (
-	proofResultsConsumerAlias = "ProofResultsConsumer"
+	proofFailuresConsumerAlias = "ProofFailuresConsumer"
 )
 
-type ZeroKnowledgeProofHandler struct {
-	service  ZkpService
+type ZeroKnowledgeProofFailedHandler struct {
+	service  ZkpFailedService
 	consumer rabbitmq.IRabbitmqConsumer
 }
 
-func NewZeroKnowledgeProofHandler() *ZeroKnowledgeProofHandler {
-	return &ZeroKnowledgeProofHandler{
-		service:  NewZkpService(),
-		consumer: rabbitmq.GetConsumer(proofResultsConsumerAlias),
+func NewZeroKnowledgeProofFailedHandler() *ZeroKnowledgeProofFailedHandler {
+	return &ZeroKnowledgeProofFailedHandler{
+		service:  newFailedZkpService(),
+		consumer: rabbitmq.GetConsumer(proofFailuresConsumerAlias),
 	}
 }
 
-func (h *ZeroKnowledgeProofHandler) GetServiceName() string {
-	return proofResultsConsumerAlias
+func (h *ZeroKnowledgeProofFailedHandler) GetServiceName() string {
+	return proofFailuresConsumerAlias
 }
 
-func (h *ZeroKnowledgeProofHandler) StartService() {
+func (h *ZeroKnowledgeProofFailedHandler) StartService() {
 	zkpLogger := logger.Default()
 	h.consumer.StartConsuming(func(d amqp.Delivery) {
 		var resp model.ZeroKnowledgeProofVerificationResponse
@@ -38,7 +38,7 @@ func (h *ZeroKnowledgeProofHandler) StartService() {
 			return
 		}
 		// Save to DB, update state, etc
-		if err := h.service.ProcessVerificationResult(resp); err != nil {
+		if err := h.service.Todo(resp); err != nil {
 			zkpLogger.Errorf(err, "Failed to process verification result")
 		} else {
 			zkpLogger.Infof("Processed ZKP verification result for identity: %s", resp.IdentityId)

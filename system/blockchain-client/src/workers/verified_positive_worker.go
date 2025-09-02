@@ -2,6 +2,7 @@ package workers
 
 import (
 	"blockchain-client/src/external"
+	"blockchain-client/src/types/domain"
 	"blockchain-client/src/types/incoming"
 
 	"blockchain-client/src/zkp"
@@ -10,6 +11,7 @@ import (
 	dtocommon "pkg-common/dto_common"
 	"pkg-common/logger"
 	"pkg-common/rabbitmq"
+	reasoncodes "pkg-common/reason_codes"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/programs/system"
@@ -47,46 +49,51 @@ func (sc *VerifiedPositiveWorker) StartService() {
 
 	sc.Consumer.StartConsuming(func(d amqp.Delivery) {
 		var message incoming.ZkpVerifiedPositiveDto
-		err := json.Unmarshal(d.Body, &message)
-		if err != nil {
-			result := dtocommon.ZkpProofFailureDto{
-				IdentityId: message.IdentityId,
-				Schema:     message.Schema,
-				ReqestBody: d.Body,
-				Error:      "unmarshal: " + err.Error(),
-			}
+		responseFactory := dtocommon.NewZkpProofFailureFactory("", d.Body)
+
+		if err := json.Unmarshal(d.Body, &message); err != nil {
+			result := responseFactory.CreateErrorDto(err, reasoncodes.ErrUnmarshal)
 
 			_ = failurePublisher.Publish(result)
+			return
 		}
+		responseFactory = dtocommon.NewZkpProofFailureFactory(message.EventId, d.Body)
 
-		circuitBase := message.MapToCircuitBase()
+		circuitBase := domain.ZkpCircuitBase{}
 		zkpResult, err := zkp.CreateZKP(circuitBase)
 		if err != nil {
 			solanaLogger.Errorf(err, "Failed to create ZKP with user provided data: %d", 10)
+			response := responseFactory.CreateErrorDto(err, reasoncodes.ErrProofGeneration)
+
+			_ = failurePublisher.Publish(response)
 			return
 		}
 
-		signatureChan := make(chan solana.Signature)
+		signatureChan := make(chan domain.ZkpStorageData)
 		errChan := make(chan error)
 
 		go sc.publishZkpToSolana(*zkpResult, errChan, signatureChan)
 
-		var signature solana.Signature
+		var proofReference domain.ZkpStorageData
 		select {
-		case signature = <-signatureChan:
-			solanaLogger.Infof("Saved zkp to blockchain with signature: %s", signature.String())
+		case proofReference = <-signatureChan:
+			solanaLogger.Infof("Saved zkp to blockchain with signature: %s")
 		case err := <-errChan:
 			solanaLogger.Errorf(err, "Unable to save the ZKP to the blockchain")
+
+			response := responseFactory.CreateErrorDto(err, reasoncodes.ErrSolana)
+			_ = failurePublisher.Publish(response)
+			return
 		}
 
 		result := dtocommon.ZkpProofResultDto{
-			IdentityId:     message.IdentityId,
-			ProofReference: signature.String(),
-			Schema:         message.Schema,
+			EventId:   message.EventId,
+			Signature: proofReference.Signature.String(),
+			AccountId: proofReference.Account.String(),
 		}
 
 		_ = resultPublisher.Publish(result)
-		solanaLogger.Infof("Processed ZKP Verification for %s. ProofReference: %s", result.IdentityId, result.ProofReference)
+		solanaLogger.Infof("Processed ZKP Verification for %s. Signature: %s, Account: %s", result.EventId, result.Signature, result.AccountId)
 	})
 }
 
@@ -94,7 +101,7 @@ func (sc *VerifiedPositiveWorker) StartService() {
 func (sc *VerifiedPositiveWorker) publishZkpToSolana(
 	zkpResult zkp.ZkpResult,
 	errCh chan error,
-	sigCh chan solana.Signature) {
+	sigCh chan domain.ZkpStorageData) {
 	zkpData, err := zkpResult.SerializeBorsh()
 	if err != nil {
 		errCh <- err
@@ -111,7 +118,7 @@ func (sc *VerifiedPositiveWorker) publishZkpToSolana(
 func (sc *VerifiedPositiveWorker) createAndPopulateZkpAccount(
 	zkpData []byte,
 	errCh chan error,
-	sigCh chan solana.Signature) {
+	sigCh chan domain.ZkpStorageData) {
 
 	solanaLogger := logger.Default()
 	space := calculateRequiredAccountSpace(zkpData)
@@ -204,7 +211,11 @@ func (sc *VerifiedPositiveWorker) createAndPopulateZkpAccount(
 	}
 
 	solanaLogger.Infof("Successfully sent combined transaction: %s", transactionSignature)
-	sigCh <- transactionSignature
+
+	sigCh <- domain.ZkpStorageData{
+		Signature: transactionSignature,
+		Account:   solana.PublicKey(newAccount),
+	}
 }
 
 func (sc *VerifiedPositiveWorker) createZkpAccount(

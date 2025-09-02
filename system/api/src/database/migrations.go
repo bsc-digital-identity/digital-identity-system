@@ -13,7 +13,8 @@ func runMigrations() {
 	err := db.AutoMigrate(
 		&model.Identity{},
 		&model.VerifiedSchema{},
-		&model.ZeroKnowledgeProof{})
+		&model.ZeroKnowledgeProof{},
+		&model.ZkpProofFailure{})
 	if err != nil {
 		migtionLogger.Fatal(err, "Migrating database failed")
 	}
