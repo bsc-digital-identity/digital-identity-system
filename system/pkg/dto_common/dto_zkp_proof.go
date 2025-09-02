@@ -1,11 +1,14 @@
 package dtocommon
 
-import "pkg-common/utilities"
+import (
+	reasoncodes "pkg-common/reason_codes"
+	"pkg-common/utilities"
+)
 
 type ZkpProofResultDto struct {
-	IdentityId     string `json:"identity_id"`
-	ProofReference string `json:"proof_reference"`
-	Schema         string `json:"schema"`
+	EventId   string `json:"event_id"`
+	Signature string `json:"signature"`
+	AccountId string `json:"account_id"`
 }
 
 func (zkpr ZkpProofResultDto) Serialize() ([]byte, error) {
@@ -13,10 +16,10 @@ func (zkpr ZkpProofResultDto) Serialize() ([]byte, error) {
 }
 
 type ZkpProofFailureDto struct {
-	IdentityId string `json:"identity_id"`
-	Schema     string `json:"schema"`
-	ReqestBody []byte `json:"request_body"`
-	Error      string `json:"error"`
+	EventId    string                 `json:"event_id"`
+	ReqestBody []byte                 `json:"request_body"`
+	Error      string                 `json:"error"`
+	ReasonCode reasoncodes.ReasonCode `json:"reason_code"`
 }
 
 func (zkpf ZkpProofFailureDto) Serialize() ([]byte, error) {

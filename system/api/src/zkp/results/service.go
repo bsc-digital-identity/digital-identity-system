@@ -1,4 +1,4 @@
-package zkp
+package zkpresult
 
 import (
 	"api/src/model"
