@@ -4,6 +4,7 @@ import (
 	"api/src/database"
 	"api/src/model"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -12,6 +13,7 @@ type Repository interface {
 	GetById(id string) (*model.Identity, error)
 	GetByName(name string) (*model.Identity, error)
 	GetSubIdentities(parentId int) ([]model.Identity, error)
+	GetSchemaById(id uuid.UUID) (model.Schema, error)
 }
 
 type gormRepository struct {
@@ -42,4 +44,10 @@ func (r *gormRepository) GetSubIdentities(parentId int) ([]model.Identity, error
 	var subs []model.Identity
 	err := r.db.Where("parent_id = ?", parentId).Find(&subs).Error
 	return subs, err
+}
+
+func (r *gormRepository) GetSchemaById(id uuid.UUID) (model.Schema, error) {
+	var schema model.Schema
+	err := r.db.Where("schema_id = ?", id.String()).First(&schema).Error
+	return schema, err
 }

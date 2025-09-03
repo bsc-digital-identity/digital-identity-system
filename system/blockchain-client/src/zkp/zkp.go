@@ -33,9 +33,9 @@ func CreateZKP(base domain.ZkpCircuitBase) (*ZkpResult, error) {
 
 	// 3. Assign inputs
 	assignment := IdentityCircuit{
-		AgeDay:   base.Day,
-		AgeMonth: base.Month,
-		AgeYear:  base.Year,
+		AgeDay:   18,
+		AgeMonth: 10,
+		AgeYear:  1990,
 	}
 
 	fullWitness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())

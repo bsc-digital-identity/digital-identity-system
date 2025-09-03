@@ -4,7 +4,9 @@ import (
 	"api/src/database"
 	"api/src/identity"
 	"api/src/middleware"
-	"api/src/zkp"
+	"api/src/outbox"
+	zkpfailed "api/src/zkp/failed"
+	zkpresult "api/src/zkp/results"
 	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
 	"pkg-common/rest"
@@ -28,7 +30,11 @@ func main() {
 		}).
 		InitRabbitmqConnection().
 		InitRabbitmqRegistries().
-		AddWorkerServices(zkp.NewZeroKnowledgeProofHandler()).
+		AddWorkerServices(
+			zkpfailed.NewZeroKnowledgeProofFailedHandler(),
+			zkpresult.NewZeroKnowledgeProofHandler(),
+			outbox.NewOutboxWorker(),
+		).
 		AddGinMiddleware(
 			rest.NewMiddleware("v1", middleware.PublicAuthMiddleware()),
 			rest.NewMiddleware("v1/internal", rest.InternalAuthMiddleware()),

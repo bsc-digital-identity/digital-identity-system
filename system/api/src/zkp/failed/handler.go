@@ -1,8 +1,8 @@
 package zkpfailed
 
 import (
-	"api/src/model"
 	"encoding/json"
+	dtocommon "pkg-common/dto_common"
 	"pkg-common/logger"
 	"pkg-common/rabbitmq"
 
@@ -32,20 +32,14 @@ func (h *ZeroKnowledgeProofFailedHandler) GetServiceName() string {
 func (h *ZeroKnowledgeProofFailedHandler) StartService() {
 	zkpLogger := logger.Default()
 	h.consumer.StartConsuming(func(d amqp.Delivery) {
-		var resp model.ZeroKnowledgeProofVerificationResponse
+		var resp dtocommon.ZkpProofFailureDto
 		if err := json.Unmarshal(d.Body, &resp); err != nil {
 			zkpLogger.Errorf(err, "Failed to unmarshal result")
 			return
 		}
 		// Save to DB, update state, etc
-		if err := h.service.Todo(resp); err != nil {
+		if err := h.service.SaveFailedAndUpdateOutbox(resp); err != nil {
 			zkpLogger.Errorf(err, "Failed to process verification result")
-		} else {
-			zkpLogger.Infof("Processed ZKP verification result for identity: %s", resp.IdentityId)
-			zkpLogger.Infof(
-				"ZKP Verification Result: identity_id=%s | is_proof_valid=%v | proof_reference=%s | schema=%s | error=%s",
-				resp.IdentityId, resp.IsProofValid, resp.ProofReference, resp.Schema, resp.Error,
-			)
 		}
 	})
 
