@@ -2,40 +2,46 @@ package zkpresult
 
 import (
 	"api/src/model"
+	"api/src/outbox"
+	dtocommon "pkg-common/dto_common"
 	"pkg-common/logger"
+
+	"github.com/google/uuid"
 )
 
 // Service interface
 type ZkpService interface {
-	ProcessVerificationResult(resp model.ZeroKnowledgeProofVerificationResponse) error
+	ProcessVerificationResult(resp dtocommon.ZkpProofResultDto) error
 }
 
 // Implementation with repo dependency
 type zkpService struct {
-	repo ZkpRepository
+	identityRepo ZkpRepository
+	outboxRepo   outbox.OutboxRepository
 }
 
 // Constructor (injects the repo)
 func NewZkpService() ZkpService {
-	return &zkpService{repo: NewZkpRepository()}
+	return &zkpService{
+		identityRepo: NewZkpRepository(),
+		outboxRepo:   outbox.NewRepo(),
+	}
 }
 
 // ProcessVerificationResult saves ZKP result into DB
-func (s *zkpService) ProcessVerificationResult(resp model.ZeroKnowledgeProofVerificationResponse) error {
+func (s *zkpService) ProcessVerificationResult(resp dtocommon.ZkpProofResultDto) error {
 	zkpLogger := logger.Default()
-	if !resp.IsProofValid {
-		zkpLogger.Warnf("Invalid proof, not saving: %s (error: %s)", resp.IdentityId, resp.Error)
-		return nil
-	}
+
+	event, err := s.outboxRepo.GetEvent(uuid.MustParse(resp.EventId))
 
 	// 1. Get identity (by UUID string)
-	identity, err := s.repo.GetIdentityByUUID(resp.IdentityId)
+	identity, err := s.identityRepo.GetIdentityByUUID(event.IdentityId)
 	if err != nil {
 		return err
 	}
 
 	// 2. Find or create the verified schema
-	schema, err := s.repo.FindOrCreateVerifiedSchema(resp.Schema, identity.Id)
+	schema, err := s.identityRepo.FindOrCreateVerifiedSchema(event.SchemaId, identity.Id)
 	if err != nil {
 		return err
 	}
@@ -44,12 +50,14 @@ func (s *zkpService) ProcessVerificationResult(resp model.ZeroKnowledgeProofVeri
 	zkp := &model.ZeroKnowledgeProof{
 		DigitalIdentitySchemaId: schema.Id,
 		SuperIdentityId:         identity.Id,
-		ProofReference:          resp.ProofReference,
+		ProofReference:          resp.Signature,
+		AccountId:               resp.AccountId,
 	}
-	if err := s.repo.SaveZeroKnowledgeProof(zkp); err != nil {
+	if err := s.identityRepo.SaveZeroKnowledgeProof(zkp); err != nil {
 		return err
 	}
 
-	zkpLogger.Infof("Saved ZKP proof for identity: %s, schema: %s", resp.IdentityId, schema.SchemaId)
-	return nil
+	zkpLogger.Infof("Saved ZKP proof for identity: %s, schema: %s", event.IdentityId, schema.SchemaId)
+	zkpLogger.Infof("Resolved and deleted event: %s", event.EventId)
+	return s.outboxRepo.MarkEventAsProcessed(uuid.MustParse(event.EventId))
 }

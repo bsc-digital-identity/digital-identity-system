@@ -8,14 +8,14 @@ type VerifiedSchema struct {
 	Schema string // json format as string
 }
 
-type Schema[T comparable] struct {
-	Constraints []Constraint[T] `json:"constraints"`
+type Schema struct {
+	Constraints []Constraint `json:"constraints"`
 }
 
-type Constraint[T comparable] struct {
+type Constraint struct {
 	Key        string         `json:"key"`
 	Comparison ComparisonType `json:"comparison_type"`
-	Value      T              `json:"value"`
+	Value      any            `json:"value"`
 }
 
 type ComparisonType string

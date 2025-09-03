@@ -23,14 +23,14 @@ func InitializeDatabaseForDev() error {
 		logger.Default().Error(result.Error, "Error inserting admin")
 	}
 
-	constraint := model.Constraint[int]{
+	constraint := model.Constraint{
 		Key:        "Age",
 		Comparison: model.GreaterThan,
 		Value:      18,
 	}
 
-	schema := model.Schema[int]{
-		Constraints: []model.Constraint[int]{constraint},
+	schema := model.Schema{
+		Constraints: []model.Constraint{constraint},
 	}
 
 	serialized_schema, err := json.Marshal(schema)

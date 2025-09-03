@@ -14,15 +14,26 @@ type ZeroKnowledgeProof struct {
 	SuperIdentityId         int            // foreign key
 	SuperIdentity           Identity       `gorm:"foreignKey:SuperIdentityId;references:Id"`
 	ProofReference          string
+	AccountId               string
 }
 
 type ZeroKnowledgeProofVerificationRequest struct {
-	IdentityId string `json:"identity_id"`
-	Schema     string `json:"schema"`
+	IdentityId string     `json:"identity_id"`
+	SchemaId   string     `json:"schema_id"`
+	Fields     []ZkpField `json:"data"`
 }
 
 func (req ZeroKnowledgeProofVerificationRequest) Serialize() ([]byte, error) {
 	return utilities.Serialize[ZeroKnowledgeProofVerificationRequest](req)
+}
+
+type ZkpField struct {
+	Key   string `json:"key"`
+	Value any    `json:"value"`
+}
+
+func (req ZkpField) Serialize() ([]byte, error) {
+	return utilities.Serialize[ZkpField](req)
 }
 
 // TODO: Naming
@@ -39,4 +50,13 @@ type ZeroKnowledgeProofResult struct {
 	VerifyingKey  groth16.VerifyingKey
 	PublicWitness witness.Witness
 	TxHash        string
+}
+
+type ZeroKnowledgeProofToVerification struct {
+	EventId string `json:"event_id"`
+	Data    string `json:"data"`
+}
+
+func (req ZeroKnowledgeProofToVerification) Serialize() ([]byte, error) {
+	return utilities.Serialize[ZeroKnowledgeProofToVerification](req)
 }
