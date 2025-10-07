@@ -17,12 +17,34 @@ services:
     container_name: identity-api
     working_dir: /root/app
     environment:
-      - DB_CONNECTION_STRING=sqlite/DigitalIdentity.db
+      - DB_CONNECTION_STRING=host=postgres user=api_user password=api_password dbname=digital_identity port=5432 sslmode=disable
       - ENV_TYPE=dev
     expose:
       - "8080:8080"
+    # Removed SQLite volume, now using PostgreSQL
+    networks:
+      - db_net
+      - default
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: digital_identity
+      POSTGRES_USER: api_user
+      POSTGRES_PASSWORD: api_password
+    ports:
+      - "5432:5432"
     volumes:
-      - ./system/api/sqlite:/root/app/sqlite
+      - pgdata:/var/lib/postgresql/data
+      - ./dev_tools/scripts/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U api_user -d digital_identity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - db_net
 
   blockchain-client:
     build:
@@ -33,11 +55,17 @@ services:
     container_name: identity-blockchain-client
 
   rabbitmq:
-    build:
-      context: ./system/rabbitmq
-    container_name: identity-rabbitmq
-    volumes:
-      - ./system/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-    expose:
-      - "5672:5672"
-      - "15672:15672"
+      build:
+        context: ./system/rabbitmq
+      container_name: identity-rabbitmq
+      volumes:
+        - ./system/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      expose:
+        - "5672"
+        - "15672"
+networks:
+  db_net:
+    driver: bridge
+volumes:
+  pgdata:
+    driver: local
