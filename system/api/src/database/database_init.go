@@ -21,6 +21,8 @@ func ConnectToDatabase[T utilities.JsonConfigObj[U], U DatabaseConfig](a *appbui
 
 func RunMigrations(migrateDatabase bool) {
 	if migrateDatabase {
-		runMigrations()
+		if err := AutoMigrate(GetDatabaseConnection()); err != nil {
+			panic(err)
+		}
 	}
 }

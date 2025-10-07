@@ -6,7 +6,7 @@
         "port": 8080
     },
     "database": {
-        "connection_string": "./sqlite/DigitalIdentity.db"
+        "connection_string": "host=postgres user=api_user password=api_password dbname=digital_identity port=5432 sslmode=disable"
     },
     "rabbitmq": {
         "user": "id_system_api",

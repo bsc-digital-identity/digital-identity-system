@@ -8,11 +8,9 @@ import (
 )
 
 type ZeroKnowledgeProof struct {
-	Id                      int            `gorm:"primaryKey;autoIncrement"`
-	DigitalIdentitySchemaId int            // foreign key to VerifiedSchema
-	DigitalIdentitySchema   VerifiedSchema `gorm:"foreignKey:DigitalIdentitySchemaId;references:Id"`
-	SuperIdentityId         int            // foreign key
-	SuperIdentity           Identity       `gorm:"foreignKey:SuperIdentityId;references:Id"`
+	Id                      int `gorm:"primaryKey;autoIncrement"`
+	DigitalIdentitySchemaId int // foreign key to VerifiedSchema
+	SuperIdentityId         int // foreign key
 	ProofReference          string
 	AccountId               string
 }

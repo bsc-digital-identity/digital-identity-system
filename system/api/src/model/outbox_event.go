@@ -1,17 +1,26 @@
 package model
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type OutboxEvent struct {
-	Id             int    `gorm:"primaryKey;autoIncrement"`
-	EventId        string `gorm:"uniqueIndex"`
-	IdentityId     string // convert to FK
-	SchemaId       string // convert to FK
-	Retry          int
-	ToProcess      bool
-	RequestMessage string
-	ProcessedAt    gorm.DeletedAt
-	CreatedAt      string
+	Id             uint           `gorm:"primaryKey;autoIncrement"`
+	EventId        string         `gorm:"uniqueIndex;type:uuid;not null"`
+	IdentityId     string         `gorm:"type:uuid;not null"`
+	SchemaId       string         `gorm:"type:uuid;not null"`
+	Retry          int            `gorm:"default:0"`
+	ToProcess      bool           `gorm:"default:false;index"`
+	RequestMessage string         `gorm:"type:text;not null"`
+	ProcessedAt    gorm.DeletedAt `gorm:"index"`
+	CreatedAt      time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP"`
+	UpdatedAt      time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP"`
+
+	// Foreign key relationships
+	Identity Identity       `gorm:"foreignKey:IdentityId;references:IdentityId"`
+	Schema   VerifiedSchema `gorm:"foreignKey:SchemaId;references:SchemaId"`
 }
 
 func (oe OutboxEvent) MapToZkpVerifcationRequest() ZeroKnowledgeProofToVerification {

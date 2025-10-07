@@ -2,11 +2,8 @@ FROM golang:1.24.5-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies for CGO + SQLite3
-RUN apk add --no-cache gcc musl-dev sqlite-dev
 
-# Enable CGO (required by go-sqlite3)
-ENV CGO_ENABLED=1
+RUN apk add --no-cache gcc musl-dev
 
 COPY api/go* ./
 
@@ -21,13 +18,12 @@ FROM alpine:3.20
 
 WORKDIR /root/app
 
-# Install SQLite runtime
-RUN apk add --no-cache sqlite
+
 
 COPY --from=builder /app/api .
-#COPY sqlite/DigitalIdentity.db .
 
-COPY api/*json ./
+
+COPY api/config.json ./config.json
 
 EXPOSE 8080
 

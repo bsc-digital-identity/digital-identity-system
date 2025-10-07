@@ -2,6 +2,7 @@ package main
 
 import (
 	"api/src/database"
+	"os"
 	"pkg-common/logger"
 	"pkg-common/rabbitmq"
 )
@@ -45,6 +46,10 @@ func (ac ApiConfig) GetRestApiPort() uint16 {
 }
 
 func (ac ApiConfig) GetDatabaseConnectionString() string {
+	// Prefer environment variable if set, fallback to config.json value
+	if env := os.Getenv("DB_CONNECTION_STRING"); env != "" {
+		return env
+	}
 	return ac.DatabaseConf.ConnectionString
 }
 
