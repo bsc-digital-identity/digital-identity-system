@@ -5,10 +5,14 @@ services:
     container_name: identity-reverse-proxy
     ports:
       - "9000:80"
-      - "5672:5671"
+      - "5672:5672"
     depends_on:
-      - api
-      - rabbitmq
+      api:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    networks:
+      - default
 
   api:
     build:
@@ -19,9 +23,11 @@ services:
     environment:
       - DB_CONNECTION_STRING=host=postgres user=api_user password=api_password dbname=digital_identity port=5432 sslmode=disable
       - ENV_TYPE=dev
-    expose:
+    ports:
       - "8080:8080"
-    # Removed SQLite volume, now using PostgreSQL
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - db_net
       - default
@@ -50,9 +56,11 @@ services:
     build:
       context: ./system
       dockerfile: blockchain-client/Dockerfile
-    expose:
-      - "8888:8888"
     container_name: identity-blockchain-client
+    ports:
+      - "8888:8888"
+    networks:
+      - default
 
   rabbitmq:
       build:

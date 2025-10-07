@@ -19,8 +19,8 @@ type OutboxEvent struct {
 	UpdatedAt      time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP"`
 
 	// Foreign key relationships
-	Identity Identity       `gorm:"foreignKey:IdentityId;references:IdentityId"`
-	Schema   VerifiedSchema `gorm:"foreignKey:SchemaId;references:SchemaId"`
+	Identity Identity       `gorm:"-"` // Reference handled by IdentityId field
+	Schema   VerifiedSchema `gorm:"-"` // Reference handled by SchemaId field
 }
 
 func (oe OutboxEvent) MapToZkpVerifcationRequest() ZeroKnowledgeProofToVerification {
