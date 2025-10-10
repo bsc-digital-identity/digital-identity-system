@@ -1,7 +1,7 @@
-package main
+package integration
 
 import (
-	"fmt"
+	"testing"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -14,15 +14,16 @@ type Identity struct {
 	ParentId     *int
 }
 
-func main() {
+func TestGormPostgresConnection(t *testing.T) {
 	dsn := "host=postgres user=api_user password=api_password dbname=digital_identity port=5432 sslmode=disable"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic(fmt.Sprintf("failed to connect database: %v", err))
+		t.Fatalf("failed to connect database: %v", err)
 	}
-	fmt.Println("Connected to database!")
+	t.Log("Successfully connected to database")
+
 	if err := db.AutoMigrate(&Identity{}); err != nil {
-		panic(fmt.Sprintf("migration failed: %v", err))
+		t.Fatalf("migration failed: %v", err)
 	}
-	fmt.Println("Migration succeeded!")
+	t.Log("Migration succeeded")
 }

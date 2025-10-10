@@ -28,15 +28,7 @@ type VerifiedPositiveWorker struct {
 func NewVerifiedPositiveWorker() *VerifiedPositiveWorker {
 	solanaConfig, err := external.LoadSolanaKeys()
 	if err != nil {
-		logger.Default().Warnf("Solana keys not found, using mock configuration for development: %v", err)
-		// Create a mock config for development
-		solanaConfig = &external.SharedSolanaConfig{
-			Keys: &external.Keys{
-				ContractPublicKey: solana.PublicKey{},  // Empty key for development
-				AccountPublicKey:  solana.PublicKey{},  // Empty key for development
-				AccountPrivateKey: solana.PrivateKey{}, // Empty key for development
-			},
-		}
+		logger.Default().Panicf(err, "Error when loading keys from solana: ")
 	}
 
 	return &VerifiedPositiveWorker{

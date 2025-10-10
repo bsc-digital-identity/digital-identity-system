@@ -1,8 +1,9 @@
-package outbox
+package integration
 
 import (
-	"api/src/database"
 	"api/src/model"
+	"api/src/outbox"
+	"api/test/integration/utils"
 	"fmt"
 	"os"
 	"testing"
@@ -21,7 +22,7 @@ var (
 
 func setupTestDB(t *testing.T) *gorm.DB {
 	if testDB == nil {
-		db := database.GetTestDB(t)
+		db := utils.GetTestDB(t)
 		if err := db.AutoMigrate(&model.OutboxEvent{}); err != nil {
 			t.Fatalf("Failed to migrate test database: %v", err)
 		}
@@ -46,7 +47,7 @@ func TestMain(m *testing.M) {
 
 	// Setup
 	t := &testing.T{}
-	db := database.SetupTestDB(t)
+	db := utils.SetupTestDB(t)
 	if db == nil {
 		os.Exit(1)
 	}
@@ -60,7 +61,7 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Failed to cleanup test database: %v\n", err)
 	}
 
-	database.CleanupTestDB(t)
+	utils.CleanupTestDB(t)
 	os.Exit(code)
 }
 
@@ -93,7 +94,7 @@ func createTestEvent(t *testing.T, db *gorm.DB, toProcess bool) uuid.UUID {
 
 func TestGetEvent(t *testing.T) {
 	db := setupTestDB(t)
-	repo := &outboxRepository{db: db}
+	repo := outbox.NewRepoWithDB(db)
 
 	// Test getting non-existent event
 	nonExistentId, err := uuid.NewRandom()
@@ -111,7 +112,7 @@ func TestGetEvent(t *testing.T) {
 func TestNewEvent(t *testing.T) {
 	t.Run("successful creation", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		identityId, err := uuid.NewRandom()
 		assert.NoError(t, err)
@@ -137,7 +138,7 @@ func TestNewEvent(t *testing.T) {
 
 	t.Run("creation with empty message", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		identityId, _ := uuid.NewRandom()
 		schemaId, _ := uuid.NewRandom()
@@ -173,7 +174,7 @@ func TestNewEvent(t *testing.T) {
 func TestGetUnprocessedEvents(t *testing.T) {
 	t.Run("empty database", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		events, err := repo.GetUnprocessedEvents()
 		assert.NoError(t, err)
@@ -182,7 +183,7 @@ func TestGetUnprocessedEvents(t *testing.T) {
 
 	t.Run("only processed events", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		_ = createTestEvent(t, db, false)
 		_ = createTestEvent(t, db, false)
@@ -194,7 +195,7 @@ func TestGetUnprocessedEvents(t *testing.T) {
 
 	t.Run("single unprocessed event", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		eventId := createTestEvent(t, db, true)
 		_ = createTestEvent(t, db, false)
@@ -208,7 +209,7 @@ func TestGetUnprocessedEvents(t *testing.T) {
 
 	t.Run("multiple mixed events", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		// Create mix of processed and unprocessed events
 		unprocessedIds := make([]string, 0)
@@ -237,7 +238,7 @@ func TestGetUnprocessedEvents(t *testing.T) {
 
 func TestMarkEventAsProcessed(t *testing.T) {
 	db := setupTestDB(t)
-	repo := &outboxRepository{db: db}
+	repo := outbox.NewRepoWithDB(db)
 
 	eventId := createTestEvent(t, db, true)
 
@@ -253,16 +254,16 @@ func TestMarkEventAsProcessed(t *testing.T) {
 func TestUpdateRetryValue(t *testing.T) {
 	t.Run("successful retry increments", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		eventId := createTestEvent(t, db, true)
 
 		// Test updating retry count
-		for i := 1; i <= maxRetries+1; i++ {
+		for i := 1; i <= outbox.MaxRetries+1; i++ {
 			err := repo.UpdateRetryValue(eventId)
 			assert.NoError(t, err)
 
-			if i <= maxRetries {
+			if i <= outbox.MaxRetries {
 				event, err := repo.GetEvent(eventId)
 				assert.NoError(t, err)
 				assert.Equal(t, i, event.Retry)
@@ -276,7 +277,7 @@ func TestUpdateRetryValue(t *testing.T) {
 
 	t.Run("retry on non-existent event", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		nonExistentId, _ := uuid.NewRandom()
 		err := repo.UpdateRetryValue(nonExistentId)
@@ -285,13 +286,13 @@ func TestUpdateRetryValue(t *testing.T) {
 
 	t.Run("concurrent retry updates", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		eventId := createTestEvent(t, db, true)
 
 		// Simulate concurrent updates
-		repo1 := &outboxRepository{db: db}
-		repo2 := &outboxRepository{db: db}
+		repo1 := outbox.NewRepoWithDB(db)
+		repo2 := outbox.NewRepoWithDB(db)
 
 		err1 := repo1.UpdateRetryValue(eventId)
 		assert.NoError(t, err1)
@@ -306,7 +307,7 @@ func TestUpdateRetryValue(t *testing.T) {
 
 	t.Run("retry on already processed event", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		eventId := createTestEvent(t, db, true)
 		err := repo.MarkEventAsProcessed(eventId)
@@ -323,8 +324,8 @@ func TestConcurrentOperations(t *testing.T) {
 		eventId := createTestEvent(t, db, true)
 
 		// Create two repository instances to simulate concurrent operations
-		repo1 := &outboxRepository{db: db}
-		repo2 := &outboxRepository{db: db}
+		repo1 := outbox.NewRepoWithDB(db)
+		repo2 := outbox.NewRepoWithDB(db)
 
 		// First mark as processed should succeed
 		err1 := repo1.MarkEventAsProcessed(eventId)
@@ -339,7 +340,7 @@ func TestConcurrentOperations(t *testing.T) {
 func TestTransactionRollback(t *testing.T) {
 	t.Run("rollback on error", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		eventId := createTestEvent(t, db, true)
 
@@ -387,7 +388,7 @@ func TestEdgeCases(t *testing.T) {
 			largeMessage[i] = byte('a')
 		}
 
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 		eventId, err := repo.NewEvent(identityId, schemaId, string(largeMessage))
 		assert.NoError(t, err)
 
@@ -398,7 +399,7 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("zero uuid values", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		zeroUUID := uuid.Nil
 		eventId, err := repo.NewEvent(zeroUUID, zeroUUID, "test message")
@@ -412,7 +413,7 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("unicode message content", func(t *testing.T) {
 		db := setupTestDB(t)
-		repo := &outboxRepository{db: db}
+		repo := outbox.NewRepoWithDB(db)
 
 		identityId, _ := uuid.NewRandom()
 		schemaId, _ := uuid.NewRandom()

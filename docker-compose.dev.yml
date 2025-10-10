@@ -1,1 +1,30 @@
+services:
+  # api:
+  #   build:
+  #     context: ./system
+  #     dockerfile: api/Dockerfile
+  #     target: builder  # Use the build stage
+  #   volumes:
+  #     - ./api:/app  # Mount source code for live development
 
+  api:
+    build:
+      context: ./system
+      dockerfile: api/Dockerfile
+      target: builder  # Use the build stage
+    container_name: identity-api
+    working_dir: /app  # Changed to match builder stage WORKDIR
+    environment:
+      - DB_CONNECTION_STRING=host=postgres user=api_user password=api_password dbname=digital_identity port=5432 sslmode=disable
+      - ENV_TYPE=dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - db_net
+      - default
+    volumes:
+      - ./system/api:/app  # Fixed path to match context
+    command: tail -f /dev/null  # Keep container running for development

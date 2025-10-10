@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const maxRetries = 5
+const MaxRetries = 5
 
 type OutboxRepository interface {
 	GetEvent(uuid.UUID) (model.OutboxEvent, error)
@@ -37,6 +37,12 @@ func (or *outboxRepository) WithTx(tx *gorm.DB) OutboxRepository {
 
 func NewRepo() OutboxRepository {
 	return &outboxRepository{db: database.GetDatabaseConnection()}
+}
+
+// NewRepoWithDB creates a new repository with a specific database connection
+// This is primarily used for testing
+func NewRepoWithDB(db *gorm.DB) OutboxRepository {
+	return &outboxRepository{db: db}
 }
 
 func (or *outboxRepository) GetEvent(eventId uuid.UUID) (model.OutboxEvent, error) {
@@ -110,7 +116,7 @@ func (or *outboxRepository) UpdateRetryValue(eventId uuid.UUID) error {
 		}
 
 		// If max retries reached, mark as processed
-		if res.Retry >= maxRetries {
+		if res.Retry >= MaxRetries {
 			return repo.MarkEventAsProcessed(eventId)
 		}
 
