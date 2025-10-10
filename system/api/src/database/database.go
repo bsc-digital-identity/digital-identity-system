@@ -35,11 +35,6 @@ func InitializeDatabaseConnection(connectionString string) {
 		}
 		databaseConnection = db
 		initializedDatabaseConn = true
-
-		// Run migrations
-		if err := AutoMigrate(db); err != nil {
-			logger.Default().Panicf(err, "Error running database migrations")
-		}
 	})
 }
 

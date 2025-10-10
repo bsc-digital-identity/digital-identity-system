@@ -1,6 +1,7 @@
-package database
+package utils
 
 import (
+	"api/src/database"
 	"os"
 	"sync"
 	"testing"
@@ -20,8 +21,8 @@ func GetTestDB(t *testing.T) *gorm.DB {
 		// Use environment variable for test database if provided
 		dbConnString := os.Getenv("TEST_DB_CONNECTION_STRING")
 		if dbConnString == "" {
-			// Default test database connection string
-			dbConnString = "host=localhost user=api_user password=api_password dbname=digital_identity_test port=5432 sslmode=disable"
+			// Default to container's postgres connection
+			dbConnString = "host=postgres user=api_user password=api_password dbname=digital_identity port=5432 sslmode=disable"
 		}
 
 		db, err := gorm.Open(postgres.Open(dbConnString), &gorm.Config{})
@@ -47,7 +48,7 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	}
 
 	// Run migrations
-	if err := AutoMigrate(db); err != nil {
+	if err := database.AutoMigrate(db); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
