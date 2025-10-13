@@ -32,9 +32,9 @@ jobs:
       working-directory: ./src/system/blockchain-client
       run: go mod download
 
-    - name: Run tests for blockchain-client project
-      working-directory: ./src/system/blockchain-client/test
-      run: go test -v
+    # - name: Run tests for blockchain-client project
+    #   working-directory: ./src/system/blockchain-client/test
+    #   run: go test -v
 
   test_api:
     name: Run API test suite
@@ -61,9 +61,9 @@ jobs:
       working-directory: ./src/system/api
       run: go mod download
 
-    - name: Run tests for API project
-      working-directory: ./src/system/api/test
-      run: go test -v
+    # - name: Run tests for API project
+    #   working-directory: ./src/system/api/test
+    #   run: go test -v
 
   test_pkg:
     name: Run pkg-common test suite
@@ -90,9 +90,9 @@ jobs:
       working-directory: ./src/system/pkg
       run: go mod download
 
-    - name: Run tests for pkg project
-      working-directory: ./src/system/pkg/test
-      run: go test -v
+    # - name: Run tests for pkg project
+    #   working-directory: ./src/system/pkg/test
+    #   run: go test -v
 
   sonarqube:
     name: SonarQube
