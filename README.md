@@ -180,6 +180,12 @@ For questions, issues, or contributions:
 
 ---
 Solana setup instructions:
+
+Requirements:
+cargo 1.75.0
+solana solana-cli 1.18.26
+
+Steps:
 0. solana-test-validator --reset
 1. program deploy wg githuba - tutaj zwróci <KEYPAIR PATH>, np: C:\Users\userabc\.config\solana\id.json
 2. solana program show --programs
@@ -189,3 +195,4 @@ Solana setup instructions:
     - "<KEYPAIR PATH>:/app/id.json:ro"
 4. docker-compose build, docker-compose up
 5. uv run python main.py
+
