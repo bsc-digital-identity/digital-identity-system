@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Utwórz ofertę (QR)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:system-ui, sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem}
+    button{padding:.6rem 1rem;border:1px solid #ccc;border-radius:8px;background:#fafafa;cursor:pointer}
+    #qr{margin-top:1rem}
+    pre{background:#f6f6f6;padding:1rem;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <h1>Credential Offer → QR (Dock Wallet)</h1>
+  <p>Kliknij, by utworzyć pre-authorized offer dla zalogowanego użytkownika.</p>
+  <button id="create">Utwórz ofertę</button>
+  <div id="out"></div>
+  <div id="qr"></div>
+
+  <script type="module">
+    const $ = (s)=>document.querySelector(s);
+    $('#create').onclick = async () => {
+      const r = await fetch('/oidc4vci/offer', { method:'POST', credentials:'include' });
+      if (!r.ok) { alert('Nie zalogowany? Najpierw /auth/dsnet/login.'); return; }
+      const data = await r.json();
+      $('#out').innerHTML = '<pre>'+JSON.stringify(data,null,2)+'</pre>';
+      const deeplink = encodeURIComponent(data.deeplink);
+      const img = document.createElement('img');
+      img.id = 'qr-img';
+      img.alt = 'QR';
+      img.src = `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${deeplink}`;
+      const link = document.createElement('p');
+      link.innerHTML = '<b>Deeplink:</b> <code>'+data.deeplink+'</code>';
+      const cont = $('#qr');
+      cont.innerHTML = '';
+      cont.appendChild(img);
+      cont.appendChild(link);
+    };
+  </script>
+</body>
+</html>
