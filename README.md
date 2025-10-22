@@ -179,3 +179,13 @@ For questions, issues, or contributions:
 - **Documentation**: Check the `/docs` directory for additional documentation
 
 ---
+Solana setup instructions:
+0. solana-test-validator --reset
+1. program deploy wg githuba - tutaj zwróci <KEYPAIR PATH>, np: C:\Users\userabc\.config\solana\id.json
+2. solana program show --programs
+3. set PROGRAM_ID=YOUR_PROGRAM_ID w docker-compose.yml -> services -> blockchain-client -> environment
+4. set     
+   volumes:
+    - "<KEYPAIR PATH>:/app/id.json:ro"
+4. docker-compose build, docker-compose up
+5. uv run python main.py

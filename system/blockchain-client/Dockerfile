@@ -21,7 +21,9 @@ COPY --from=builder /app ./app
 WORKDIR /root/app
 
 # solana keypairs
-COPY blockchain-client/*json ./
+#COPY blockchain-client/*json ./
+
+COPY blockchain-client/config.json ./config.json
 
 EXPOSE 8888
 

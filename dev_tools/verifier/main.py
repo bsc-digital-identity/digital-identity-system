@@ -1,8 +1,10 @@
 import pika
 import json
+import uuid
 
 message = {
-    "identity_id": "admin-guid-here",
+    "event_id": str(uuid.uuid4()),
+    "identity_id": "9ac41446-8945-4a7d-accf-47621830127e",
     "day": 15,
     "month": 7,
     "year": 1990,
