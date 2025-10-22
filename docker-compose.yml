@@ -53,7 +53,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - db_netg
+      - db_net
 
   blockchain-client:
     build:
