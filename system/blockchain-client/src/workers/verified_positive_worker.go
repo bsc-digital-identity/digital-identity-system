@@ -4,6 +4,7 @@ import (
 	"blockchain-client/src/external"
 	"blockchain-client/src/types/domain"
 	"blockchain-client/src/types/incoming"
+	"fmt"
 
 	"blockchain-client/src/zkp"
 	"context"
@@ -77,7 +78,7 @@ func (sc *VerifiedPositiveWorker) StartService() {
 		var proofReference domain.ZkpStorageData
 		select {
 		case proofReference = <-signatureChan:
-			solanaLogger.Infof("Saved zkp to blockchain with signature: %s")
+			solanaLogger.Infof("Saved zkp to blockchain with signature: %s", proofReference.Signature.String())
 		case err := <-errChan:
 			solanaLogger.Errorf(err, "Unable to save the ZKP to the blockchain")
 
@@ -148,13 +149,14 @@ func (sc *VerifiedPositiveWorker) createAndPopulateZkpAccount(
 	createAccountInstruction := system.NewCreateAccountInstruction(
 		rent,
 		space,
-		sc.Config.Keys.ContractPublicKey,
-		sc.Config.Keys.AccountPublicKey,
-		newAccount.PublicKey(),
+		sc.Config.Keys.ContractPublicKey, // owner = ProgramID
+		sc.Config.Keys.AccountPublicKey,  // payer (FROM)
+		newAccount.PublicKey(),           // new account (NEW)
 	).Build()
 
 	accounts := []*solana.AccountMeta{
-		solana.NewAccountMeta(newAccount.PublicKey(), true, true),
+		solana.NewAccountMeta(newAccount.PublicKey(), false, true),
+		solana.NewAccountMeta(sc.Config.Keys.AccountPublicKey, true, true),
 	}
 
 	zkpInstruction := solana.NewInstruction(
@@ -195,6 +197,40 @@ func (sc *VerifiedPositiveWorker) createAndPopulateZkpAccount(
 		return
 	}
 
+	// DEBUG
+	{
+		msg := tx.Message
+		solanaLogger.Infof("AccountKeys (n=%d):", len(msg.AccountKeys))
+		for i, k := range msg.AccountKeys {
+			solanaLogger.Infof("  [%d] %s", i, k.String())
+		}
+		for i, ix := range msg.Instructions {
+			solanaLogger.Infof("IX #%d: programIDIndex=%d accounts=%v dataLen=%d", i, ix.ProgramIDIndex, ix.Accounts, len(ix.Data))
+			// sanity check:
+			for _, idx := range ix.Accounts {
+				if int(idx) >= len(msg.AccountKeys) {
+					solanaLogger.Errorf(nil, "BAD INDEX: ix#%d uses account index %d (n=%d)", i, idx, len(msg.AccountKeys))
+				}
+			}
+			if int(ix.ProgramIDIndex) >= len(msg.AccountKeys) {
+				solanaLogger.Errorf(nil, "BAD PROGRAM INDEX: ix#%d programIDIndex=%d (n=%d)", i, ix.ProgramIDIndex, len(msg.AccountKeys))
+			}
+		}
+	}
+
+	sim, simErr := sc.RpcClient.SimulateTransaction(context.Background(), tx)
+	if simErr != nil {
+		errCh <- fmt.Errorf("simulate call: %w", simErr)
+		return
+	}
+	if sim.Value.Err != nil {
+		for _, l := range sim.Value.Logs {
+			logger.Default().Debugf(l)
+		}
+		errCh <- fmt.Errorf("simulate err: %+v", sim.Value.Err)
+		return
+	}
+
 	transactionSignature, err := sc.RpcClient.SendTransactionWithOpts(
 		context.Background(),
 		tx,
@@ -214,7 +250,7 @@ func (sc *VerifiedPositiveWorker) createAndPopulateZkpAccount(
 
 	sigCh <- domain.ZkpStorageData{
 		Signature: transactionSignature,
-		Account:   solana.PublicKey(newAccount),
+		Account:   newAccount.PublicKey(),
 	}
 }
 
@@ -248,9 +284,9 @@ func (sc *VerifiedPositiveWorker) createZkpAccount(
 	createAccountInstruction := system.NewCreateAccountInstruction(
 		rent,
 		space,
-		sc.Config.Keys.ContractPublicKey,
-		sc.Config.Keys.AccountPublicKey,
-		newAccount.PublicKey(),
+		sc.Config.Keys.ContractPublicKey, // owner = ProgramID
+		sc.Config.Keys.AccountPublicKey,  // payer (FROM)
+		newAccount.PublicKey(),           // new account (NEW)
 	).Build()
 
 	latest, err := sc.RpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)

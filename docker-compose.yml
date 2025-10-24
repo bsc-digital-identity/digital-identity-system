@@ -5,12 +5,15 @@ services:
     container_name: identity-reverse-proxy
     ports:
       - "9000:80"
-      - "5672:5672"
+      - "5672:5671"
     depends_on:
       api:
         condition: service_started
       rabbitmq:
         condition: service_started
+      blockchain-client:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - default
 
@@ -56,7 +59,12 @@ services:
     build:
       context: ./system
       dockerfile: blockchain-client/Dockerfile
-    container_name: identity-blockchain-client
+    environment:
+      - PROGRAM_ID=HxSN1yBPYopxe5vok6HquwokoKS4BriodHXrro3QvkfL
+      - PAYER_KEYPAIR_PATH=/app/id.json
+      - SOLANA_URL=http://host.docker.internal:8899
+    volumes:
+      - "C:/Users/jasiek/.config/solana/id.json:/app/id.json:ro"
     ports:
       - "8888:8888"
     networks:
