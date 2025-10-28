@@ -1,6 +1,7 @@
 package test
 
 import (
+	domain "blockchain-client/src/types/domain"
 	zkp "blockchain-client/src/zkp"
 	"testing"
 	"time"
@@ -23,10 +24,20 @@ type ZkpResultBinary struct {
 	TxHash        string `borsh_skip:"true"`
 }
 
+func (z ZkpTestingParams) toCircuitBase() domain.ZkpCircuitBase {
+	return domain.ZkpCircuitBase{
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "birth_day", Value: z.day},
+			{Key: "birth_month", Value: z.month},
+			{Key: "birth_year", Value: z.year},
+		},
+	}
+}
+
 func TestZkpShouldProveRightOver18(t *testing.T) {
 	tt := ZkpTestingParams{"Over 18", 15, 7, 1990, true}
 
-	zkpRes, err := zkp.CreateZKP(tt.day, tt.month, tt.year)
+	zkpRes, err := zkp.CreateZKP(tt.toCircuitBase())
 	if err != nil && tt.shouldVerify {
 		t.Fatalf("Failed to create ZKP: %v", err)
 	}
@@ -48,7 +59,7 @@ func TestZkpShouldProveRightOver18(t *testing.T) {
 func TestZkpShouldProveRightExactly18(t *testing.T) {
 	tt := ZkpTestingParams{"Exactly 18", time.Now().Day(), int(time.Now().Month()), time.Now().Year() - 18, true}
 
-	zkpRes, err := zkp.CreateZKP(tt.day, tt.month, tt.year)
+	zkpRes, err := zkp.CreateZKP(tt.toCircuitBase())
 	if err != nil && tt.shouldVerify {
 		t.Fatalf("Failed to create ZKP: %v", err)
 	}
@@ -71,7 +82,7 @@ func TestZkpShouldProveRightExactly18(t *testing.T) {
 func TestZkpShouldProveWrongUnder18(t *testing.T) {
 	tt := ZkpTestingParams{"Under 18", 15, 7, time.Now().Year() - 10, false}
 
-	zkpRes, err := zkp.CreateZKP(tt.day, tt.month, tt.year)
+	zkpRes, err := zkp.CreateZKP(tt.toCircuitBase())
 	if err != nil && tt.shouldVerify {
 		t.Fatalf("Failed to create ZKP: %v", err)
 	}
@@ -94,7 +105,7 @@ func TestSerializationForZKP(t *testing.T) {
 	tt := ZkpTestingParams{"Over 18", 15, 7, 1990, true}
 
 	// create and serialize ZKP to solana compatible format
-	zkpRes, err := zkp.CreateZKP(tt.day, tt.month, tt.year)
+	zkpRes, err := zkp.CreateZKP(tt.toCircuitBase())
 	if err != nil && tt.shouldVerify {
 		t.Fatalf("Failed to create ZKP: %v", err)
 	}
