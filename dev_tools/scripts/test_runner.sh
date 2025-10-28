@@ -22,7 +22,7 @@ run_all() {
     go test -v $PKG_TEST_DIR
 }
 
-becnmark_all() {
+benchmark_all() {
     cd $BLOCKCHAIN_CLIENT_TEST_DIR/..
     go clean -cache && go clean -testcache
     go test -bench . -run notest $BLOCKCHAIN_CLIENT_TEST_DIR
@@ -41,7 +41,7 @@ case $1 in
         run_all
         ;;
     "bench")
-        becnmark_all
+        benchmark_all
     ;;
     *)
         echo "usage: $0 [test|bench]"

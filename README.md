@@ -156,7 +156,7 @@ The project includes comprehensive test suites:
 cd dev_tools/scripts/
 
 # Run all unit tests
-./test_runner.sh all
+./test_runner.sh test
 
 # Run benchmarks
 ./test_runner.sh bench
