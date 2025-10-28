@@ -15,7 +15,6 @@ const (
 	ElipticalCurveID = ecc.BN254
 )
 
-// TODO: actual implementation of zkp creation of any circuit type
 func CreateZKP(base domain.ZkpCircuitBase) (*ZkpResult, error) {
 	schemaJSON := base.SchemaJSON
 	if schemaJSON == "" {

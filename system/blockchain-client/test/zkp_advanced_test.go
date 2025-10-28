@@ -87,7 +87,7 @@ func TestZkpInvalidInputs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			zkpRes, err := zkp.CreateZKP(newDOBBase(tc.day, tc.month, tc.year))
 
-			// Even with invalid inputs, the ZKP creation might succeed
+			// Even with invalid inputs, the ZKP creation might succeed,
 			// but verification should handle the logic correctly
 			if err == nil && zkpRes != nil {
 				// Test that verification behaves correctly with invalid dates
@@ -358,7 +358,6 @@ func TestZkpMemoryUsage(t *testing.T) {
 	}
 }
 
-/*
 func TestZkpBoundaryDates(t *testing.T) {
 	// Test boundary conditions around the 18-year threshold
 	now := time.Now()
@@ -379,27 +378,38 @@ func TestZkpBoundaryDates(t *testing.T) {
 
 	for _, tc := range boundaryTests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Calculate the birth date based on offset
+			// Calculate the birthdate based on offset
 			birthDate := now.AddDate(-18, 0, tc.daysOffset)
 
-			zkpRes, err := zkp.CreateZKP(birthDate.Day(), int(birthDate.Month()), birthDate.Year())
-			if err != nil && tc.shouldVerify {
-				t.Fatalf("Failed to create ZKP for %s: %v", tc.name, err)
-			}
+			zkpRes, err := zkp.CreateZKP(newDOBBase(birthDate.Day(), int(birthDate.Month()), birthDate.Year()))
 
 			if tc.shouldVerify {
-				err = groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
 				if err != nil {
-					t.Errorf("Expected verification to pass for %s but got error: %v", tc.name, err)
+					t.Fatalf("Failed to create ZKP for %s: %v", tc.name, err)
 				}
-			} else {
-				// For cases that should fail, check that verification actually fails
-				err = groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
-				if err == nil {
-					t.Errorf("Expected verification to fail for %s but it passed", tc.name)
+				if zkpRes == nil {
+					t.Fatalf("ZKP result is nil for %s despite no error", tc.name)
 				}
+
+				verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
+				if verifyErr != nil {
+					t.Errorf("Expected verification to pass for %s but got error: %v", tc.name, verifyErr)
+				}
+				return
+			}
+
+			// Failures may surface during circuit creation or verification; either is acceptable.
+			if err != nil {
+				return
+			}
+			if zkpRes == nil {
+				t.Fatalf("ZKP result is nil for %s without an accompanying error", tc.name)
+			}
+
+			verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
+			if verifyErr == nil {
+				t.Errorf("Expected verification to fail for %s but it passed", tc.name)
 			}
 		})
 	}
 }
-*/
