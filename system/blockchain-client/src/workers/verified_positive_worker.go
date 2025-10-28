@@ -225,7 +225,7 @@ func (sc *VerifiedPositiveWorker) createAndPopulateZkpAccount(
 	}
 	if sim.Value.Err != nil {
 		for _, l := range sim.Value.Logs {
-			logger.Default().Debugf(l)
+			logger.Default().Debug(l)
 		}
 		errCh <- fmt.Errorf("simulate err: %+v", sim.Value.Err)
 		return

@@ -334,7 +334,7 @@ func BenchmarkZkpFullCycle(b *testing.B) {
 func TestZkpMemoryUsage(t *testing.T) {
 	// Test that ZKP operations don't cause memory leaks
 	for i := 0; i < 10; i++ {
-		zkpRes, err := zkp.CreateZKP(15, 7, 1990)
+		zkpRes, err := zkp.CreateZKP(newDOBBase(15, 7, 1990))
 		if err != nil {
 			t.Fatalf("Failed to create ZKP iteration %d: %v", i, err)
 		}

@@ -2,6 +2,7 @@ package zkp
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/consensys/gnark/frontend"
@@ -135,13 +136,22 @@ func (dc *DynamicCircuit) applyRangeConstraint(api frontend.API, constraint Cons
 		return fmt.Errorf("range constraint requires two bounds")
 	}
 
+	minBound, err := toIntBound(bounds[0])
+	if err != nil {
+		return err
+	}
+	maxBound, err := toIntBound(bounds[1])
+	if err != nil {
+		return err
+	}
+
 	value, err := dc.fieldVariable(constraint.Fields[0])
 	if err != nil {
 		return err
 	}
 
-	api.AssertIsLessOrEqual(bounds[0], value)
-	api.AssertIsLessOrEqual(value, bounds[1])
+	api.AssertIsLessOrEqual(minBound, value)
+	api.AssertIsLessOrEqual(value, maxBound)
 
 	return nil
 }
@@ -247,6 +257,13 @@ func (dc *DynamicCircuit) applyAgeConstraint(api frontend.API, constraint Constr
 	)
 
 	return nil
+}
+
+func toIntBound(bound float64) (int64, error) {
+	if math.Trunc(bound) != bound {
+		return 0, fmt.Errorf("range constraint bound must be whole number, got %v", bound)
+	}
+	return int64(bound), nil
 }
 
 func (dc *DynamicCircuit) fieldVariable(name string) (frontend.Variable, error) {
