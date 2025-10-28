@@ -26,7 +26,7 @@ The **Digital Identity System** is a cutting-edge blockchain-based platform that
 - **Cryptographic Security**: Uses industry-standard Groth16 zero-knowledge proof system
 - **Decentralized Storage**: No central authority controls or stores personal data`
 
-## 🚀 Getting Started
+## ✈️ Getting Started
 
 Follow these steps to set up and run the project locally:
 
@@ -36,54 +36,16 @@ Before you begin, ensure you have the following installed on your system:
 
 - **Docker** and **Docker Compose** (for containerized deployment)
 - **Rust** (with Cargo)
-- **Solana CLI** tools (latest version)
+- **Solana CLI** tools (the latest version)
 - **Go** 
 
-### 1. 🛠️ Smart Contract Setup
-
-Navigate to the smart contract directory and verify your development environment:
-
-```bash
-cd dev_tools/scripts/
-chmod +x smart_contract.sh
-smart_contract.sh check
-```
-
-This command will:
-- Verify Rust toolchain installation
-- Check Solana CLI availability
-- Display version information for all tools
-
-If any tools are missing, the script will provide installation instructions.
-
----
-
-### 2. 🔗 Install and Configure Solana CLI
-
-Install the Solana CLI and configure it for local development.
-
-📖 For detailed installation instructions, visit: [Solana CLI Installation Guide](https://solana.com/docs/intro/installation#solana-cli-basics)
-
----
-
-### 3. 🏃‍♂️ Start Local Solana Validator
-
-```bash
-# Start the validator (keep this running in a separate process)
-solana-test-validator --reset
-```
-
-The validator should be running on `http://localhost:8899` and `ws://localhost:8900`.
-
----
-
-### 4. 🚀 Deploy Smart Contract
-
-Build and deploy the smart contract to your local validator:
-
-```bash
-cd dev_tools/scripts/
-smart_contract.sh deploy
+```sh
+docker --version
+docker-compose --version
+rustc --version
+cargo --version
+solana --version
+go version
 ```
 
 This will:
@@ -177,22 +139,3 @@ For questions, issues, or contributions:
 - **Issues**: [GitHub Issues](https://github.com/bsc-digital-identity/digital-identity-system/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/bsc-digital-identity/digital-identity-system/discussions)
 - **Documentation**: Check the `/docs` directory for additional documentation
-
----
-Solana setup instructions:
-
-Requirements:
-cargo 1.75.0
-solana solana-cli 1.18.26
-
-Steps:
-0. solana-test-validator --reset
-1. program deploy wg githuba - tutaj zwróci <KEYPAIR PATH>, np: C:\Users\userabc\.config\solana\id.json
-2. solana program show --programs
-3. set PROGRAM_ID=YOUR_PROGRAM_ID w docker-compose.yml -> services -> blockchain-client -> environment
-4. set     
-   volumes:
-    - "KEYPAIR PATH:/app/id.json:ro"
-4. docker-compose build, docker-compose up
-5. uv run python main.py
-
