@@ -1,8 +1,8 @@
 package test
 
 import (
-	domain "blockchain-client/src/types/domain"
-	zkp "blockchain-client/src/zkp"
+	"blockchain-client/src/types/domain"
+	"blockchain-client/src/zkp"
 	"testing"
 	"time"
 

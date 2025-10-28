@@ -26,7 +26,7 @@ func TestLoadSolanaKeysSuccess(t *testing.T) {
 	}
 	defer os.Remove("test_account_keypair.json")
 
-	// Temporarily change working directory or modify the function to accept file paths
+	// Temporarily change the working directory or modify the function to accept file paths
 	// For this test, we'll test the structure rather than file loading
 	t.Log("Testing Solana config structure")
 
