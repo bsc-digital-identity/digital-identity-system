@@ -1,12 +1,23 @@
 package test
 
 import (
+	domain "blockchain-client/src/types/domain"
 	zkp "blockchain-client/src/zkp"
 	"testing"
 	"time"
 
 	"github.com/consensys/gnark/backend/groth16"
 )
+
+func newDOBBase(day, month, year int) domain.ZkpCircuitBase {
+	return domain.ZkpCircuitBase{
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "birth_day", Value: day},
+			{Key: "birth_month", Value: month},
+			{Key: "birth_year", Value: year},
+		},
+	}
+}
 
 // Additional comprehensive ZKP tests beyond the existing ones
 
@@ -30,7 +41,7 @@ func TestZkpEdgeCases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			zkpRes, err := zkp.CreateZKP(tc.day, tc.month, tc.year)
+			zkpRes, err := zkp.CreateZKP(newDOBBase(tc.day, tc.month, tc.year))
 
 			if err != nil && tc.shouldVerify {
 				t.Fatalf("Failed to create ZKP for %s: %v", tc.description, err)
@@ -74,7 +85,7 @@ func TestZkpInvalidInputs(t *testing.T) {
 
 	for _, tc := range invalidCases {
 		t.Run(tc.name, func(t *testing.T) {
-			zkpRes, err := zkp.CreateZKP(tc.day, tc.month, tc.year)
+			zkpRes, err := zkp.CreateZKP(newDOBBase(tc.day, tc.month, tc.year))
 
 			// Even with invalid inputs, the ZKP creation might succeed
 			// but verification should handle the logic correctly
@@ -103,7 +114,7 @@ func TestZkpSerializationRoundTrip(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create original ZKP
-			originalZkp, err := zkp.CreateZKP(tc.day, tc.month, tc.year)
+			originalZkp, err := zkp.CreateZKP(newDOBBase(tc.day, tc.month, tc.year))
 			if err != nil {
 				t.Fatalf("Failed to create original ZKP: %v", err)
 			}
@@ -154,7 +165,7 @@ func BenchmarkZkpConcurrentCreation(b *testing.B) {
 			month := 7
 			year := 1990 - (index % 10) // Cycle through different years
 
-			zkpRes, err := zkp.CreateZKP(day, month, year)
+			zkpRes, err := zkp.CreateZKP(newDOBBase(day, month, year))
 			if err != nil {
 				b.Fatalf("Failed to create ZKP: %v", err)
 			}
@@ -191,7 +202,7 @@ func TestZkpConcurrentCreation(t *testing.T) {
 			month := 7
 			year := 1990 - index // Different years to ensure different inputs
 
-			zkpRes, err := zkp.CreateZKP(day, month, year)
+			zkpRes, err := zkp.CreateZKP(newDOBBase(day, month, year))
 			if err != nil {
 				errors <- err
 				return
@@ -228,7 +239,7 @@ func TestZkpConcurrentCreation(t *testing.T) {
 // BenchmarkZkpCreation benchmarks ZKP creation performance
 func BenchmarkZkpCreation(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := zkp.CreateZKP(15, 7, 1990)
+		_, err := zkp.CreateZKP(newDOBBase(15, 7, 1990))
 		if err != nil {
 			b.Fatalf("Failed to create ZKP: %v", err)
 		}
@@ -238,7 +249,7 @@ func BenchmarkZkpCreation(b *testing.B) {
 // BenchmarkZkpVerification benchmarks ZKP verification performance
 func BenchmarkZkpVerification(b *testing.B) {
 	// Setup: create a ZKP once for verification benchmarking
-	zkpRes, err := zkp.CreateZKP(15, 7, 1990)
+	zkpRes, err := zkp.CreateZKP(newDOBBase(15, 7, 1990))
 	if err != nil {
 		b.Fatalf("Failed to create ZKP for benchmark setup: %v", err)
 	}
@@ -255,7 +266,7 @@ func BenchmarkZkpVerification(b *testing.B) {
 // BenchmarkZkpSerialization benchmarks ZKP serialization performance
 func BenchmarkZkpSerialization(b *testing.B) {
 	// Setup: create a ZKP once for serialization benchmarking
-	zkpRes, err := zkp.CreateZKP(15, 7, 1990)
+	zkpRes, err := zkp.CreateZKP(newDOBBase(15, 7, 1990))
 	if err != nil {
 		b.Fatalf("Failed to create ZKP for benchmark setup: %v", err)
 	}
@@ -272,7 +283,7 @@ func BenchmarkZkpSerialization(b *testing.B) {
 // BenchmarkZkpDeserialization benchmarks ZKP deserialization performance
 func BenchmarkZkpDeserialization(b *testing.B) {
 	// Setup: create and serialize a ZKP once for deserialization benchmarking
-	zkpRes, err := zkp.CreateZKP(15, 7, 1990)
+	zkpRes, err := zkp.CreateZKP(newDOBBase(15, 7, 1990))
 	if err != nil {
 		b.Fatalf("Failed to create ZKP for benchmark setup: %v", err)
 	}
@@ -295,7 +306,7 @@ func BenchmarkZkpDeserialization(b *testing.B) {
 func BenchmarkZkpFullCycle(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// Create ZKP
-		zkpRes, err := zkp.CreateZKP(15, 7, 1990)
+		zkpRes, err := zkp.CreateZKP(newDOBBase(15, 7, 1990))
 		if err != nil {
 			b.Fatalf("Failed to create ZKP: %v", err)
 		}
@@ -323,7 +334,7 @@ func BenchmarkZkpFullCycle(b *testing.B) {
 func TestZkpMemoryUsage(t *testing.T) {
 	// Test that ZKP operations don't cause memory leaks
 	for i := 0; i < 10; i++ {
-		zkpRes, err := zkp.CreateZKP(15, 7, 1990)
+		zkpRes, err := zkp.CreateZKP(newDOBBase(15, 7, 1990))
 		if err != nil {
 			t.Fatalf("Failed to create ZKP iteration %d: %v", i, err)
 		}

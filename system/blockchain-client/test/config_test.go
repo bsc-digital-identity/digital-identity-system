@@ -1,7 +1,7 @@
 package test
 
 import (
-	"blockchain-client/src/config"
+	"blockchain-client/src/external"
 	"os"
 	"testing"
 
@@ -33,13 +33,13 @@ func TestLoadSolanaKeysSuccess(t *testing.T) {
 	// Test that we can create a valid config structure
 	privateKey := solana.MustPrivateKeyFromBase58("4Z7cXSyeFR8wNGMVXUE1TwtKn5D5Vu7FzEv69dokLv7KrQk7h6pu4LF8ZRR9yQBhc7uSM9PiLpAkKktDD8kUmyHT")
 
-	keys := &config.Keys{
+	keys := &external.Keys{
 		ContractPublicKey: privateKey.PublicKey(),
 		AccountPublicKey:  privateKey.PublicKey(),
 		AccountPrivateKey: privateKey,
 	}
 
-	solanaConfig := &config.SharedSolanaConfig{
+	solanaConfig := &external.SharedSolanaConfig{
 		Keys: keys,
 	}
 
@@ -59,7 +59,7 @@ func TestLoadSolanaKeysSuccess(t *testing.T) {
 func TestKeysStructure(t *testing.T) {
 	privateKey := solana.MustPrivateKeyFromBase58("4Z7cXSyeFR8wNGMVXUE1TwtKn5D5Vu7FzEv69dokLv7KrQk7h6pu4LF8ZRR9yQBhc7uSM9PiLpAkKktDD8kUmyHT")
 
-	keys := &config.Keys{
+	keys := &external.Keys{
 		ContractPublicKey: privateKey.PublicKey(),
 		AccountPublicKey:  privateKey.PublicKey(),
 		AccountPrivateKey: privateKey,
@@ -78,13 +78,13 @@ func TestKeysStructure(t *testing.T) {
 func TestSharedSolanaConfigConcurrency(t *testing.T) {
 	privateKey := solana.MustPrivateKeyFromBase58("4Z7cXSyeFR8wNGMVXUE1TwtKn5D5Vu7FzEv69dokLv7KrQk7h6pu4LF8ZRR9yQBhc7uSM9PiLpAkKktDD8kUmyHT")
 
-	keys := &config.Keys{
+	keys := &external.Keys{
 		ContractPublicKey: privateKey.PublicKey(),
 		AccountPublicKey:  privateKey.PublicKey(),
 		AccountPrivateKey: privateKey,
 	}
 
-	solanaConfig := &config.SharedSolanaConfig{
+	solanaConfig := &external.SharedSolanaConfig{
 		Keys: keys,
 	}
 

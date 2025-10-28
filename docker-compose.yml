@@ -60,11 +60,11 @@ services:
       context: ./system
       dockerfile: blockchain-client/Dockerfile
     environment:
-      - PROGRAM_ID=HxSN1yBPYopxe5vok6HquwokoKS4BriodHXrro3QvkfL
+      - PROGRAM_ID=${PROGRAM_ID}
       - PAYER_KEYPAIR_PATH=/app/id.json
       - SOLANA_URL=http://host.docker.internal:8899
     volumes:
-      - "C:/Users/jasiek/.config/solana/id.json:/app/id.json:ro"
+      - "${KEYPAIR_PATH}:/app/id.json:ro"
     ports:
       - "8888:8888"
     networks:
