@@ -284,10 +284,7 @@ func TestInitDefaultLogger(t *testing.T) {
 	// Reset the once variable for testing
 	// Note: This might require making the once variable exported or adding a reset function
 	config := logger.GlobalLoggerConfig{
-		Args: []struct {
-			Key   string
-			Value string
-		}{
+		Args: []logger.LoggerArg{
 			{"application", "test-app"},
 			{"version", "1.0.0"},
 		},
@@ -304,10 +301,7 @@ func TestInitDefaultLogger(t *testing.T) {
 func TestDefaultLogger(t *testing.T) {
 	// Initialize first
 	config := logger.GlobalLoggerConfig{
-		Args: []struct {
-			Key   string
-			Value string
-		}{
+		Args: []logger.LoggerArg{
 			{"service", "test"},
 		},
 	}

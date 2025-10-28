@@ -48,80 +48,30 @@ solana --version
 go version
 ```
 
-This will:
-- Compile the Rust smart contract to BPF bytecode
-- Deploy it to your local Solana validator
-- Display the program ID for use by the blockchain client
-- Copy program keypair into the blockchain-client directory
+### 🚀 Start the system
 
----
+Start the setup script. It will prepare the environment, keep `solana-test-validator` running, and get `docker-compose` up. To stop, use CTRL+C.
 
-### 5. 🔑 Configure Wallet and Keys
-
-The blockchain client requires Solana keypairs for operation:
-
-```bash
-cd system/blockchain-client
-
-# 1. Your Solana account keypair (for transaction signing and payment)
-cp ~/.config/solana/id.json ./id.json
-
-# Fund your account with test SOL (for transaction fees)
-solana airdrop 2 $(solana-keygen pubkey ./id.json)
+```sh
+chmod +x setup.sh
+```
+```sh
+./setup.sh
 ```
 
-**Important**: These keypairs are used for:
-- **identity_app-keypair.json**: Smart contract program ID and ownership
-- **id.json**: Transaction signing and fee payment
-
----
-
-### 6. 🐳 Run the Complete System
-
-Start all services using Docker Compose:
-
-```bash
-# From the project root directory
-docker-compose up --build
-```
-
-This will launch:
-- **API Service** (port 8080): Identity management REST API
-- **Blockchain Client** (port 8001): ZKP generation and Solana integration
-- **RabbitMQ** (port 5672): Message queue for inter-service communication
-- **Reverse Proxy** (port 9000): Nginx proxy for load balancing
-
----
-
-### 7. 🧪 Verify Installation
-
-Test that everything is working correctly:
-
-```bash
-# Check API health
-curl http://localhost:9000/api/health
-
-# Check services are running
-docker-compose ps
-
-# Test ZKP generation (if you have test tools)
-cd dev_tools/clis/api-test
-go run main.go
-```
----
+More details in [DETAILED START](DETAILED_START.md).
 
 ## 🧪 Testing
 
 The project includes comprehensive test suites:
 
-```bash
-cd dev_tools/scripts/
-
+```sh
 # Run all unit tests
-./test_runner.sh test
-
+dev_tools/scripts/test_runner.sh test
+```
+```sh
 # Run benchmarks
-./test_runner.sh bench
+dev_tools/scripts/test_runner.sh bench
 ```
 ---
 

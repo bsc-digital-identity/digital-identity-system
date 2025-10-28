@@ -176,7 +176,7 @@ func (a *AppBuilder[T, U]) InitGinRouter() AppBuilderInterface[T, U] {
 		case rest.PATCH:
 			group.PATCH(r.Path, r.HandlerFunc)
 		default:
-			a.Logger.Warnf("Unrecognized HTTP method: %s", r.Method)
+			a.Logger.Warnf("Unrecognized HTTP method: %d", r.Method)
 		}
 	}
 
