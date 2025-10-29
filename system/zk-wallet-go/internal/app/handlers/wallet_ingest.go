@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
@@ -6,14 +6,17 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"zk-wallet-go/internal/app/config"
+	"zk-wallet-go/pkg/util"
+	"zk-wallet-go/pkg/util/timeutil"
 
 	"github.com/lestrrat-go/jwx/v2/jws"
 )
 
-// ingestRequest represents the input for wallet ingestion.
+// IngestRequest represents the input for wallet ingestion.
 // Exactly one of Credential (compact JWS) or Offer (credential offer URI/deeplink) should be provided.
 // The Store flag controls whether the VC should be persisted locally (defaults to true).
-type ingestRequest struct {
+type IngestRequest struct {
 	// Provide exactly one:
 	Credential string `json:"credential,omitempty"` // compact JWS (jwt_vc_json)
 	Offer      string `json:"offer,omitempty"`      // credential_offer_uri OR openid-credential-offer://...
@@ -21,9 +24,9 @@ type ingestRequest struct {
 	Store *bool `json:"store,omitempty"`
 }
 
-// ingestResponse is the unified output describing what was ingested,
+// IngestResponse is the unified output describing what was ingested,
 // whether the credential verified, basic extracted metadata, and the raw payload (best-effort).
-type ingestResponse struct {
+type IngestResponse struct {
 	Source  string   `json:"source"`          // "credential" | "offer"
 	Valid   bool     `json:"valid"`           // signature verification result
 	VCID    string   `json:"vc_id,omitempty"` // sha256 of compact JWS
@@ -33,11 +36,11 @@ type ingestResponse struct {
 	Payload any      `json:"payload,omitempty"` // decoded JWT payload (best-effort)
 }
 
-// handleWalletIngest accepts either a direct compact JWS credential or a credential offer,
+// HandleWalletIngest accepts either a direct compact JWS credential or a credential offer,
 // optionally redeems the offer (token → credential), verifies the VC (best-effort),
 // stores it (if requested), and returns a normalized response with metadata.
-func handleWalletIngest(w http.ResponseWriter, r *http.Request) {
-	var in ingestRequest
+func HandleWalletIngest(w http.ResponseWriter, r *http.Request) {
+	var in IngestRequest
 	// Parse incoming JSON request.
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		http.Error(w, "bad json: "+err.Error(), http.StatusBadRequest)
@@ -73,7 +76,7 @@ func handleWalletIngest(w http.ResponseWriter, r *http.Request) {
 			CredentialConfigurationIDs []string               `json:"credential_configuration_ids"`
 			Grants                     map[string]interface{} `json:"grants"`
 		}
-		if err := httpGetJSON(offerURL, &offer); err != nil {
+		if err := util.HttpGetJSON(offerURL, &offer); err != nil {
 			http.Error(w, "offer fetch failed: "+err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -93,7 +96,7 @@ func handleWalletIngest(w http.ResponseWriter, r *http.Request) {
 			ExpiresIn   int    `json:"expires_in"`
 			CNonce      string `json:"c_nonce"`
 		}
-		if err := httpPostJSON(offer.CredentialIssuer+"/oidc4vci/token", map[string]any{
+		if err := util.HttpPostJSON(offer.CredentialIssuer+"/oidc4vci/token", map[string]any{
 			"grant_type":          "urn:ietf:params:oauth:grant-type:pre-authorized_code",
 			"pre-authorized_code": pre,
 		}, &tokRes); err != nil {
@@ -106,7 +109,7 @@ func handleWalletIngest(w http.ResponseWriter, r *http.Request) {
 			Format     string `json:"format"`
 			Credential string `json:"credential"`
 		}
-		if err := httpPostAuthJSON(offer.CredentialIssuer+"/oidc4vci/credential", tokRes.AccessToken, map[string]any{}, &credRes); err != nil {
+		if err := util.HttpPostAuthJSON(offer.CredentialIssuer+"/oidc4vci/credential", tokRes.AccessToken, map[string]any{}, &credRes); err != nil {
 			http.Error(w, "credential failed: "+err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -122,7 +125,7 @@ func handleWalletIngest(w http.ResponseWriter, r *http.Request) {
 
 	// Verify signature against local issuerJWKSet (PoC). In production, resolve issuer JWKS.
 	valid := true
-	msg, err := jws.Verify([]byte(compact), jws.WithKeySet(issuerJWKSet))
+	msg, err := jws.Verify([]byte(compact), jws.WithKeySet(config.IssuerJWKSet))
 	if err != nil {
 		valid = false // If verification fails, we still proceed with best-effort decode.
 		// best-effort decode will likely be empty if verify failed
@@ -143,7 +146,7 @@ func handleWalletIngest(w http.ResponseWriter, r *http.Request) {
 	_ = json.Unmarshal(msg, &pl)
 
 	// Compute a stable VC ID as sha256(Base64URL JWS).
-	vcID := sha256hex([]byte(compact))
+	vcID := util.Sha256hex([]byte(compact))
 	stored := false
 
 	// Optionally store the credential in the in-memory wallet cache.
@@ -154,26 +157,26 @@ func handleWalletIngest(w http.ResponseWriter, r *http.Request) {
 			display = pl.VC.Type[len(pl.VC.Type)-1]
 		}
 
-		walletMu.Lock()
+		config.WalletMu.Lock()
 		// Avoid overwriting if the VC already exists.
-		if _, exists := walletVCs[vcID]; !exists {
-			walletVCs[vcID] = StoredVC{
+		if _, exists := config.WalletVCs[vcID]; !exists {
+			config.WalletVCs[vcID] = config.StoredVC{
 				ID:          vcID,
 				Format:      "jwt_vc_json",
 				Credential:  compact,
 				Issuer:      pl.Iss,
 				Subject:     pl.Sub,
 				Types:       pl.VC.Type,
-				ReceivedAt:  TimeUTC{T: time.Now().UTC().Unix()},
+				ReceivedAt:  timeutil.TimeUTC{T: time.Now().UTC().Unix()},
 				DisplayName: display,
 			}
 		}
 		stored = true
-		walletMu.Unlock()
+		config.WalletMu.Unlock()
 	}
 
 	// Return a normalized response with verification result and parsed info.
-	writeJSON(w, ingestResponse{
+	util.WriteJSON(w, IngestResponse{
 		Source:  source,
 		Valid:   valid,
 		VCID:    vcID,
@@ -192,7 +195,7 @@ func normalizeOfferToURI(input string) (string, error) {
 	//  - credential_offer_uri (http/https URL)
 	//  - openid-credential-offer://?credential_offer_uri=...
 	if strings.HasPrefix(input, "openid-credential-offer://") {
-		u, err := parseURL(input)
+		u, err := util.ParseURL(input)
 		if err != nil {
 			return "", err
 		}

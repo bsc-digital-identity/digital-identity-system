@@ -1,23 +1,24 @@
-package main
+package handlers
 
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"golang.org/x/oauth2"
 	"log"
 	"net/http"
 	"strings"
-
-	"golang.org/x/oauth2"
+	"zk-wallet-go/internal/app/config"
+	"zk-wallet-go/pkg/util"
 )
 
-// handleLogin starts the OIDC authorization request flow.
+// HandleLogin starts the OIDC authorization request flow.
 // It generates a PKCE verifier + challenge and redirects the user to the OIDC provider's login page.
-func handleLogin(w http.ResponseWriter, r *http.Request) {
+func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// --- PKCE (Proof Key for Code Exchange) setup ---
 	// Generate random string used as PKCE verifier
-	ver := randomString(64)
+	ver := util.RandomString(64)
 	http.SetCookie(w, &http.Cookie{
-		Name:     cookieNamePKCE,
+		Name:     config.CookieNamePKCE,
 		Value:    ver,
 		Path:     "/",
 		HttpOnly: true,
@@ -31,7 +32,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// --- Nonce for replay protection ---
 	// Used later to verify ID Token authenticity
-	nonce := randomString(16)
+	nonce := util.RandomString(16)
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oidc_nonce",
 		Value:    nonce,
@@ -43,22 +44,22 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// --- Build Authorization URL ---
 	// Redirect user to OIDC provider’s login page with PKCE params and nonce
-	authURL := oauth2Config.AuthCodeURL(
-		randomString(16), // random state to prevent CSRF
+	authURL := config.Oauth2Config.AuthCodeURL(
+		util.RandomString(16), // random state to prevent CSRF
 		oauth2.SetAuthURLParam("code_challenge", challenge),
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 		oauth2.SetAuthURLParam("prompt", "login"),
 		oauth2.SetAuthURLParam("nonce", nonce),
-		oauth2.SetAuthURLParam("scope", strings.Join(oauth2Config.Scopes, " ")),
+		oauth2.SetAuthURLParam("scope", strings.Join(config.Oauth2Config.Scopes, " ")),
 	)
 
 	log.Println("[OIDC] redirecting to:", authURL)
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
-// handleCallback is called after the OIDC provider redirects back with the authorization code.
+// HandleCallback is called after the OIDC provider redirects back with the authorization code.
 // It exchanges the code for tokens, verifies the ID token, and creates a session.
-func handleCallback(w http.ResponseWriter, r *http.Request) {
+func HandleCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Extract authorization code from query params
@@ -69,18 +70,18 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retrieve stored PKCE verifier from cookie
-	pkce, _ := r.Cookie(cookieNamePKCE)
+	pkce, _ := r.Cookie(config.CookieNamePKCE)
 	if pkce == nil {
 		http.Error(w, "missing pkce verifier", http.StatusBadRequest)
 		return
 	}
 
 	// Exchange authorization code for access token (and optionally ID token)
-	tok, err := oauth2Config.Exchange(
+	tok, err := config.Oauth2Config.Exchange(
 		ctx,
 		code,
 		oauth2.SetAuthURLParam("code_verifier", pkce.Value),
-		oauth2.SetAuthURLParam("redirect_uri", redirectURI),
+		oauth2.SetAuthURLParam("redirect_uri", config.RedirectURI),
 	)
 	if err != nil {
 		log.Printf("[OIDC] Token exchange FAILED: %v", err)
@@ -96,7 +97,7 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 	if rawIDToken, ok := tok.Extra("id_token").(string); ok && rawIDToken != "" {
 		// ID Token found → verify its signature and parse claims
 		log.Printf("  ID Token len=%d", len(rawIDToken))
-		idt, err := verifier.Verify(ctx, rawIDToken)
+		idt, err := config.Verifier.Verify(ctx, rawIDToken)
 		if err != nil {
 			http.Error(w, "id_token verify failed: "+err.Error(), http.StatusBadRequest)
 			return
@@ -118,7 +119,7 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 		// Some providers (like DSNet) may omit it; use /userinfo endpoint instead
 		log.Println("  Missing id_token in response! Falling back to /userinfo")
 
-		ui, err := oidcProvider.UserInfo(ctx, oauth2.StaticTokenSource(tok))
+		ui, err := config.OidcProvider.UserInfo(ctx, oauth2.StaticTokenSource(tok))
 		if err != nil {
 			http.Error(w, "userinfo fetch failed: "+err.Error(), http.StatusBadRequest)
 			return
@@ -140,14 +141,14 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// --- Create local session ---
-	sid := randomString(32)
-	sessMu.Lock()
-	sessStore[sid] = session{Sub: sub, Email: email, Name: name}
-	sessMu.Unlock()
+	sid := util.RandomString(32)
+	config.SessMu.Lock()
+	config.SessStore[sid] = config.Session{Sub: sub, Email: email, Name: name}
+	config.SessMu.Unlock()
 
 	// Set session cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:     cookieNameSession,
+		Name:     config.CookieNameSession,
 		Value:    sid,
 		Path:     "/",
 		HttpOnly: true,
@@ -160,16 +161,16 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/offer.html", http.StatusFound)
 }
 
-// handleLogout clears the session cookie and removes user session from memory.
-func handleLogout(w http.ResponseWriter, r *http.Request) {
-	c, _ := r.Cookie(cookieNameSession)
+// HandleLogout clears the session cookie and removes user session from memory.
+func HandleLogout(w http.ResponseWriter, r *http.Request) {
+	c, _ := r.Cookie(config.CookieNameSession)
 	if c != nil {
-		sessMu.Lock()
-		delete(sessStore, c.Value)
-		sessMu.Unlock()
+		config.SessMu.Lock()
+		delete(config.SessStore, c.Value)
+		config.SessMu.Unlock()
 	}
 	// Expire cookie immediately
-	http.SetCookie(w, &http.Cookie{Name: cookieNameSession, Value: "", Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: config.CookieNameSession, Value: "", Path: "/", MaxAge: -1})
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
