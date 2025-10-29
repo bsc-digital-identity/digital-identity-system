@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
@@ -7,12 +7,16 @@ import (
 	"path"
 	"strings"
 	"time"
+	"zk-wallet-go/internal/app/config"
+	"zk-wallet-go/internal/app/server"
+	"zk-wallet-go/pkg/util"
+	"zk-wallet-go/pkg/util/timeutil"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
 )
 
-// handleCreateOffer creates a new OIDC4VCI "credential offer".
+// HandleCreateOffer creates a new OIDC4VCI "credential offer".
 // This endpoint is typically called by an authenticated user (issuer UI) to generate
 // a short-lived offer code and a deeplink for wallet apps.
 //
@@ -20,26 +24,26 @@ import (
 // 1. Verify user session.
 // 2. Generate random pre-authorized code valid for 5 minutes.
 // 3. Return both credential_offer_uri and deeplink for wallet scanning.
-func handleCreateOffer(w http.ResponseWriter, r *http.Request) {
+func HandleCreateOffer(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	// Require active login session.
-	s, err := currentSession(r)
+	s, err := server.CurrentSession(r)
 	if err != nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	// Create a short-lived pre-authorization record (5 min lifetime).
-	code := randomString(32)
-	preAuthMu.Lock()
-	preAuthStore[code] = preauth{Code: code, User: s, ExpiresAt: nowUTC().AddSeconds(300)}
-	preAuthMu.Unlock()
+	code := util.RandomString(32)
+	config.PreAuthMu.Lock()
+	config.PreAuthStore[code] = config.Preauth{Code: code, User: s, ExpiresAt: timeutil.NowUTC().AddSeconds(300)}
+	config.PreAuthMu.Unlock()
 
 	// Construct URLs for wallet consumption.
-	offerURI := issuerBaseURL + "/oidc4vci/offer/" + code
+	offerURI := config.IssuerBaseURL + "/oidc4vci/offer/" + code
 	deeplink := "openid-credential-offer://?credential_offer_uri=" + urlQueryEscape(offerURI)
 
 	// Respond with both the API URL and the mobile deeplink.
@@ -47,28 +51,28 @@ func handleCreateOffer(w http.ResponseWriter, r *http.Request) {
 		"credential_offer_uri": offerURI,
 		"deeplink":             deeplink,
 	}
-	writeJSON(w, resp)
+	util.WriteJSON(w, resp)
 }
 
-// handleOfferByCode serves the actual credential offer object for wallets
+// HandleOfferByCode serves the actual credential offer object for wallets
 // when they resolve the credential_offer_uri (GET /oidc4vci/offer/{code}).
 // It validates that the offer code exists and has not expired, then returns
 // the standard credential_offer JSON payload per OIDC4VCI spec.
-func handleOfferByCode(w http.ResponseWriter, r *http.Request) {
+func HandleOfferByCode(w http.ResponseWriter, r *http.Request) {
 	code := path.Base(r.URL.Path)
 
 	// Lookup offer and validate expiration.
-	preAuthMu.RLock()
-	pa, ok := preAuthStore[code]
-	preAuthMu.RUnlock()
-	if !ok || nowUTC().After(pa.ExpiresAt) {
+	config.PreAuthMu.RLock()
+	pa, ok := config.PreAuthStore[code]
+	config.PreAuthMu.RUnlock()
+	if !ok || timeutil.NowUTC().After(pa.ExpiresAt) {
 		http.Error(w, "offer expired or invalid", http.StatusBadRequest)
 		return
 	}
 
 	// Respond with credential offer payload.
 	offer := map[string]any{
-		"credential_issuer":            issuerBaseURL,
+		"credential_issuer":            config.IssuerBaseURL,
 		"credential_configuration_ids": []string{"StudentCredential_JWT_v1"},
 		"grants": map[string]any{
 			"urn:ietf:params:oauth:grant-type:pre-authorized_code": map[string]any{
@@ -76,10 +80,10 @@ func handleOfferByCode(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 	}
-	writeJSON(w, offer)
+	util.WriteJSON(w, offer)
 }
 
-// handleVciToken implements the OIDC4VCI /token endpoint.
+// HandleVciToken implements the OIDC4VCI /token endpoint.
 // The wallet calls this endpoint with the pre-authorized code to exchange it
 // for an access_token and c_nonce used in credential issuance.
 //
@@ -88,7 +92,7 @@ func handleOfferByCode(w http.ResponseWriter, r *http.Request) {
 // 2. Validate pre-authorized code and expiration.
 // 3. Issue short-lived access_token (5 min) and c_nonce.
 // 4. Return token response per OIDC4VCI spec.
-func handleVciToken(w http.ResponseWriter, r *http.Request) {
+func HandleVciToken(w http.ResponseWriter, r *http.Request) {
 	log.Println("[VCI] /token hit")
 
 	// Decode request body.
@@ -111,30 +115,30 @@ func handleVciToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate pre-authorized code and its expiration.
-	preAuthMu.RLock()
-	pa, ok := preAuthStore[body.PreAuthorizedCode]
-	preAuthMu.RUnlock()
-	if !ok || nowUTC().After(pa.ExpiresAt) {
+	config.PreAuthMu.RLock()
+	pa, ok := config.PreAuthStore[body.PreAuthorizedCode]
+	config.PreAuthMu.RUnlock()
+	if !ok || timeutil.NowUTC().After(pa.ExpiresAt) {
 		http.Error(w, "invalid or expired pre-authorized code", http.StatusBadRequest)
 		return
 	}
 
 	// Create a new short-lived access token record (5 min).
-	at := "atk_" + randomString(32)
-	cnonce := randomString(32)
-	accessMu.Lock()
-	accessStore[at] = accessRec{
+	at := "atk_" + util.RandomString(32)
+	cnonce := util.RandomString(32)
+	config.AccessMu.Lock()
+	config.AccessStore[at] = config.AccessRec{
 		Token:  at,
 		User:   pa.User,
 		CNonce: cnonce,
-		Exp:    nowUTC().AddSeconds(300),
+		Exp:    timeutil.NowUTC().AddSeconds(300),
 	}
-	accessMu.Unlock()
+	config.AccessMu.Unlock()
 
 	// Invalidate (single-use) pre-authorized code.
-	preAuthMu.Lock()
-	delete(preAuthStore, body.PreAuthorizedCode)
-	preAuthMu.Unlock()
+	config.PreAuthMu.Lock()
+	delete(config.PreAuthStore, body.PreAuthorizedCode)
+	config.PreAuthMu.Unlock()
 
 	// Return token response.
 	resp := map[string]any{
@@ -144,10 +148,10 @@ func handleVciToken(w http.ResponseWriter, r *http.Request) {
 		"c_nonce":            cnonce,
 		"c_nonce_expires_in": 300,
 	}
-	writeJSON(w, resp)
+	util.WriteJSON(w, resp)
 }
 
-// handleVciCredential issues a verifiable credential as a signed JWT (VC-JWT format).
+// HandleVciCredential issues a verifiable credential as a signed JWT (VC-JWT format).
 // The wallet calls this endpoint with the access_token (and normally a proof JWT).
 //
 // Flow summary:
@@ -156,7 +160,7 @@ func handleVciToken(w http.ResponseWriter, r *http.Request) {
 // 3. Create a VC payload with example claims.
 // 4. Sign using issuer's Ed25519 private key.
 // 5. Return the signed credential in VC-JWT format.
-func handleVciCredential(w http.ResponseWriter, r *http.Request) {
+func HandleVciCredential(w http.ResponseWriter, r *http.Request) {
 	// Check Authorization header.
 	auth := r.Header.Get("Authorization")
 	if !strings.HasPrefix(auth, "Bearer ") {
@@ -166,10 +170,10 @@ func handleVciCredential(w http.ResponseWriter, r *http.Request) {
 	at := strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
 
 	// Validate token existence and expiration.
-	accessMu.RLock()
-	rec, ok := accessStore[at]
-	accessMu.RUnlock()
-	if !ok || nowUTC().After(rec.Exp) {
+	config.AccessMu.RLock()
+	rec, ok := config.AccessStore[at]
+	config.AccessMu.RUnlock()
+	if !ok || timeutil.NowUTC().After(rec.Exp) {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -186,14 +190,14 @@ func handleVciCredential(w http.ResponseWriter, r *http.Request) {
 
 	// Compose VC-JWT claims.
 	vcClaims := map[string]any{
-		"iss": issuerBaseURL,
+		"iss": config.IssuerBaseURL,
 		"sub": rec.User.Sub,
 		"iat": now.Unix(),
 		"nbf": now.Unix(),
 		"vc": map[string]any{
 			"@context":     []any{"https://www.w3.org/2018/credentials/v1"},
 			"type":         []string{"VerifiableCredential", "StudentCredential"},
-			"issuer":       issuerBaseURL,
+			"issuer":       config.IssuerBaseURL,
 			"issuanceDate": now.Format(time.RFC3339),
 			"credentialSubject": map[string]any{
 				"id":             rec.User.Sub,
@@ -211,7 +215,7 @@ func handleVciCredential(w http.ResponseWriter, r *http.Request) {
 	// Prepare protected headers for JWS.
 	hdr := jws.NewHeaders()
 	_ = hdr.Set(jws.AlgorithmKey, jwa.EdDSA)
-	_ = hdr.Set(jws.KeyIDKey, issuerKeyID)
+	_ = hdr.Set(jws.KeyIDKey, config.IssuerKeyID)
 	_ = hdr.Set("typ", "vc+jwt")
 
 	// Sign payload with issuer's Ed25519 private key.
@@ -219,7 +223,7 @@ func handleVciCredential(w http.ResponseWriter, r *http.Request) {
 		payload,
 		jws.WithKey(
 			jwa.EdDSA,
-			issuerPrivKey,
+			config.IssuerPrivKey,
 			jws.WithProtectedHeaders(hdr),
 		),
 	)
@@ -233,10 +237,10 @@ func handleVciCredential(w http.ResponseWriter, r *http.Request) {
 		"format":     "jwt_vc_json",
 		"credential": string(signed),
 	}
-	writeJSON(w, resp)
+	util.WriteJSON(w, resp)
 }
 
 // tiny helpers
 
 // urlQueryEscape wraps escapeQuery (local implementation elsewhere) to URL-encode query parameters.
-func urlQueryEscape(s string) string { return escapeQuery(s) }
+func urlQueryEscape(s string) string { return util.EscapeQuery(s) }
