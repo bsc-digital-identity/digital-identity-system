@@ -2,6 +2,7 @@ package zkp
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -93,6 +94,15 @@ func convertToInt(value interface{}) (int64, error) {
 		return int64(v), nil
 	case float64:
 		return int64(v), nil
+	case json.Number:
+		if i, err := v.Int64(); err == nil {
+			return i, nil
+		}
+		f, err := v.Float64()
+		if err != nil {
+			return 0, fmt.Errorf("unable to parse integer: %w", err)
+		}
+		return int64(f), nil
 	case string:
 		if v == "" {
 			return 0, fmt.Errorf("empty string cannot be converted to integer")
