@@ -20,6 +20,17 @@ const stringEqualitySchema = `{
   ]
 }`
 
+const numberComparisonSchema = `{
+  "schema_id": "score_at_least_five",
+  "version": "1.0.0",
+  "fields": [
+    {"name": "score", "type": "number", "required": true, "secret": true}
+  ],
+  "constraints": [
+    {"type": "comparison", "fields": ["score"], "operator": "ge", "value": 5}
+  ]
+}`
+
 func newDOBBase(day, month, year int) domain.ZkpCircuitBase {
 	return domain.ZkpCircuitBase{
 		VerifiedValues: []domain.ZkpField[any]{
@@ -117,6 +128,49 @@ func TestZkpStringEqualityConstraintFailure(t *testing.T) {
 
 	if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr == nil {
 		t.Fatal("Expected verification to fail for mismatched string input but it passed")
+	}
+}
+
+func TestZkpNumberComparisonConstraint(t *testing.T) {
+	base := domain.ZkpCircuitBase{
+		SchemaJSON: numberComparisonSchema,
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "score", Value: 10},
+		},
+	}
+
+	zkpRes, err := zkp.CreateZKP(base)
+	if err != nil {
+		t.Fatalf("Failed to create ZKP for numeric comparison schema: %v", err)
+	}
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil for numeric comparison schema")
+	}
+
+	if err := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); err != nil {
+		t.Fatalf("Expected numeric comparison ZKP verification to pass but got error: %v", err)
+	}
+}
+
+func TestZkpNumberComparisonConstraintFailure(t *testing.T) {
+	base := domain.ZkpCircuitBase{
+		SchemaJSON: numberComparisonSchema,
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "score", Value: 3},
+		},
+	}
+
+	zkpRes, err := zkp.CreateZKP(base)
+	if err != nil {
+		// Creation may fail if circuit evaluation detects the violation early.
+		return
+	}
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil despite no error for invalid numeric input")
+	}
+
+	if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr == nil {
+		t.Fatal("Expected verification to fail for numeric comparison but it passed")
 	}
 }
 
