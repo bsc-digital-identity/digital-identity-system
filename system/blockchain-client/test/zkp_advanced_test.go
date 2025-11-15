@@ -9,6 +9,17 @@ import (
 	"github.com/consensys/gnark/backend/groth16"
 )
 
+const stringEqualitySchema = `{
+  "schema_id": "string_equality_check",
+  "version": "1.0.0",
+  "fields": [
+    {"name": "favorite_color", "type": "string", "required": true, "secret": true}
+  ],
+  "constraints": [
+    {"type": "comparison", "fields": ["favorite_color"], "operator": "eq", "value": "blue"}
+  ]
+}`
+
 func newDOBBase(day, month, year int) domain.ZkpCircuitBase {
 	return domain.ZkpCircuitBase{
 		VerifiedValues: []domain.ZkpField[any]{
@@ -63,6 +74,49 @@ func TestZkpEdgeCases(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestZkpStringEqualityConstraint(t *testing.T) {
+	base := domain.ZkpCircuitBase{
+		SchemaJSON: stringEqualitySchema,
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "favorite_color", Value: "blue"},
+		},
+	}
+
+	zkpRes, err := zkp.CreateZKP(base)
+	if err != nil {
+		t.Fatalf("Failed to create ZKP for string equality schema: %v", err)
+	}
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil for string equality schema")
+	}
+
+	if err := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); err != nil {
+		t.Fatalf("Expected string equality ZKP verification to pass but got error: %v", err)
+	}
+}
+
+func TestZkpStringEqualityConstraintFailure(t *testing.T) {
+	base := domain.ZkpCircuitBase{
+		SchemaJSON: stringEqualitySchema,
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "favorite_color", Value: "green"},
+		},
+	}
+
+	zkpRes, err := zkp.CreateZKP(base)
+	if err != nil {
+		// Creation failure due to unsatisfied constraint is acceptable.
+		return
+	}
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil despite no error for invalid string input")
+	}
+
+	if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr == nil {
+		t.Fatal("Expected verification to fail for mismatched string input but it passed")
 	}
 }
 

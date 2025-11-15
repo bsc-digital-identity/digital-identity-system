@@ -1,10 +1,14 @@
 package zkp
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"math/big"
 	"strconv"
 	"time"
 )
+
+var scalarFieldModulus = new(big.Int).Set(ElipticalCurveID.ScalarField())
 
 func convertToVariable(field FieldDefinition, value interface{}) (interface{}, error) {
 	if value == nil {
@@ -17,7 +21,7 @@ func convertToVariable(field FieldDefinition, value interface{}) (interface{}, e
 	case FieldTypeBoolean:
 		return convertToBool(value)
 	case FieldTypeString:
-		return fmt.Sprint(value), nil
+		return convertToStringFieldValue(value)
 	case FieldTypeDate:
 		switch v := value.(type) {
 		case time.Time:
@@ -35,6 +39,31 @@ func convertToVariable(field FieldDefinition, value interface{}) (interface{}, e
 		}
 	default:
 		return value, nil
+	}
+}
+
+func convertToStringFieldValue(value interface{}) (*big.Int, error) {
+	str, err := normalizeString(value)
+	if err != nil {
+		return nil, err
+	}
+
+	hash := sha256.Sum256([]byte(str))
+	number := new(big.Int).SetBytes(hash[:])
+	number.Mod(number, scalarFieldModulus)
+	return number, nil
+}
+
+func normalizeString(value interface{}) (string, error) {
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case []byte:
+		return string(v), nil
+	case fmt.Stringer:
+		return v.String(), nil
+	default:
+		return "", fmt.Errorf("unsupported string type %T", value)
 	}
 }
 
