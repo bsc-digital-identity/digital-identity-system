@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Mock types for testing config functionality
+// Mock types for testing zkpconfig functionality
 type MockConfigJson struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
@@ -59,14 +59,14 @@ func (mss MockSerializableStruct) Serialize() ([]byte, error) {
 }
 
 func TestReadConfig(t *testing.T) {
-	// Create a temporary config file
+	// Create a temporary zkpconfig file
 	tempFile, err := os.CreateTemp("", "test_config_*.json")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 	defer os.Remove(tempFile.Name())
 
-	// Write test config to file
+	// Write test zkpconfig to file
 	testConfig := MockConfigJson{
 		Name:    "test-app",
 		Version: "1.0.0",
@@ -75,16 +75,16 @@ func TestReadConfig(t *testing.T) {
 
 	configData, err := json.Marshal(testConfig)
 	if err != nil {
-		t.Fatalf("Failed to marshal test config: %v", err)
+		t.Fatalf("Failed to marshal test zkpconfig: %v", err)
 	}
 
 	_, err = tempFile.Write(configData)
 	if err != nil {
-		t.Fatalf("Failed to write test config: %v", err)
+		t.Fatalf("Failed to write test zkpconfig: %v", err)
 	}
 	tempFile.Close()
 
-	// Test reading the config
+	// Test reading the zkpconfig
 	result, err := utilities.ReadConfig[MockConfigJson, MockConfig](tempFile.Name())
 	if err != nil {
 		t.Fatalf("ReadConfig failed: %v", err)
@@ -450,7 +450,7 @@ func BenchmarkConvertJsonArrayToDomain(b *testing.B) {
 
 // Integration tests
 func TestConfigReadAndConvert(t *testing.T) {
-	// Create a complex config file
+	// Create a complex zkpconfig file
 	tempFile, err := os.CreateTemp("", "test_complex_config_*.json")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
@@ -480,19 +480,19 @@ func TestConfigReadAndConvert(t *testing.T) {
 
 	configData, err := json.Marshal(complexConfig)
 	if err != nil {
-		t.Fatalf("Failed to marshal complex config: %v", err)
+		t.Fatalf("Failed to marshal complex zkpconfig: %v", err)
 	}
 
 	_, err = tempFile.Write(configData)
 	if err != nil {
-		t.Fatalf("Failed to write complex config: %v", err)
+		t.Fatalf("Failed to write complex zkpconfig: %v", err)
 	}
 	tempFile.Close()
 
 	// Read and verify the JSON can be unmarshaled
 	fileContent, err := os.ReadFile(tempFile.Name())
 	if err != nil {
-		t.Fatalf("Failed to read config file: %v", err)
+		t.Fatalf("Failed to read zkpconfig file: %v", err)
 	}
 
 	var readConfig struct {
@@ -503,7 +503,7 @@ func TestConfigReadAndConvert(t *testing.T) {
 
 	err = json.Unmarshal(fileContent, &readConfig)
 	if err != nil {
-		t.Fatalf("Failed to unmarshal config: %v", err)
+		t.Fatalf("Failed to unmarshal zkpconfig: %v", err)
 	}
 
 	// Verify the content

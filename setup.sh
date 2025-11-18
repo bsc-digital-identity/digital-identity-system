@@ -43,8 +43,8 @@ cleanup() {
   exit 0
 }
 
-# Trap on Ctrl+C, termination, or any unhandled error
-trap cleanup INT TERM ERR
+# Trap on Ctrl+C or termination (not ERR, so we see the real error)
+trap cleanup INT TERM
 
 # ---------- preflight ----------
 command -v solana >/dev/null || { echo "ERROR: 'solana' CLI not found in PATH." >&2; exit 1; }
@@ -72,6 +72,12 @@ for i in {1..60}; do
   fi
 done
 
+# Extra guard: ensure the validator didn't crash right after RPC probe
+if ! ps -p "${VALIDATOR_PID}" >/dev/null 2>&1; then
+  echo "ERROR: solana-test-validator is not running (likely Windows symlink privilege). Enable Developer Mode and re-run." >&2
+  exit 1
+fi
+
 # ---------- build & deploy smart contract ----------
 chmod +x dev_tools/scripts/smart_contract.sh
 
@@ -79,18 +85,24 @@ log "Running smart_contract.sh check"
 dev_tools/scripts/smart_contract.sh check
 
 log "Deploying program..."
-# Parse both "Keypair Path" and "Program Id" robustly, regardless of order/spacing/CRLF.
+# Parse both "Keypair Path" and "Program Id" robustly, preserving Windows paths with ':'.
 # We write to a temporary .env then move it atomically when complete.
 dev_tools/scripts/smart_contract.sh deploy \
-| tee >(awk -F': *' '
-    /Keypair Path|Program Id/ {
-      # Normalize CR if present
-      gsub(/\r/, "")
-      if ($1 ~ /Keypair Path/) { print "KEYPAIR_PATH=" $2 }
-      else if ($1 ~ /Program Id/) { print "PROGRAM_ID=" $2 }
-    }
-  ' > "${ENV_TMP}"
-)
+| tee >(awk '
+  {
+    gsub(/\r/, "", $0)  # strip CR if present
+  }
+  /Keypair Path:/ {
+    line = $0
+    sub(/^[^:]+:\s*/, "", line)   # drop "Keypair Path: "
+    print "KEYPAIR_PATH=" line
+  }
+  /Program Id:/ {
+    line = $0
+    sub(/^[^:]+:\s*/, "", line)   # drop "Program Id: "
+    print "PROGRAM_ID=" line
+  }
+' > "${ENV_TMP}")
 
 # Ensure we captured both values before finalizing .env
 if ! (grep -q '^KEYPAIR_PATH=' "${ENV_TMP}" && grep -q '^PROGRAM_ID=' "${ENV_TMP}"); then
@@ -112,8 +124,19 @@ cp -f "${HOME}/.config/solana/id.json" ./system/blockchain-client/id.json
 
 PUBKEY=$(solana-keygen pubkey ./system/blockchain-client/id.json)
 log "Requesting airdrop for ${PUBKEY}..."
-solana --url "${SOLANA_URL}" airdrop 2 "${PUBKEY}"
-log "Airdrop complete."
+
+max_try=10
+for try in $(seq 1 $max_try); do
+  if solana --url "${SOLANA_URL}" airdrop 2 "${PUBKEY}"; then
+    log "Airdrop complete."
+    break
+  fi
+  if [[ $try -eq $max_try ]]; then
+    echo "ERROR: airdrop failed after ${max_try} attempts." >&2
+    exit 1
+  fi
+  sleep 1
+done
 
 # ---------- docker compose ----------
 log "setup ready, starting docker"
@@ -122,3 +145,4 @@ log "setup ready, starting docker"
 
 # If compose exits normally (containers stop), clean up the validator as well.
 cleanup
+

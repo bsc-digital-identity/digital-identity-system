@@ -80,10 +80,10 @@ func TestRabbitmqConfigConvertToDomain(t *testing.T) {
 		t.Errorf("Expected Password to be 'testpass', got '%s'", result.Password)
 	}
 	if len(result.PublishersConfig) != 1 {
-		t.Errorf("Expected 1 publisher config, got %d", len(result.PublishersConfig))
+		t.Errorf("Expected 1 publisher zkpconfig, got %d", len(result.PublishersConfig))
 	}
 	if len(result.ConsumersConfig) != 1 {
-		t.Errorf("Expected 1 consumer config, got %d", len(result.ConsumersConfig))
+		t.Errorf("Expected 1 consumer zkpconfig, got %d", len(result.ConsumersConfig))
 	}
 }
 
@@ -324,12 +324,12 @@ func TestRabbitmqConfigArrayConversion(t *testing.T) {
 		t.Errorf("Expected 2 consumer configs, got %d", len(result.ConsumersConfig))
 	}
 
-	// Verify first publisher config
+	// Verify first publisher zkpconfig
 	if string(result.PublishersConfig[0].PublisherAlias) != "pub1" {
 		t.Error("First publisher alias not converted correctly")
 	}
 
-	// Verify first consumer config
+	// Verify first consumer zkpconfig
 	if string(result.ConsumersConfig[0].ConsumerAlias) != "cons1" {
 		t.Error("First consumer alias not converted correctly")
 	}

@@ -29,7 +29,7 @@ func (c *solanaTestClient) StartService() {
 }
 
 func TestNewSolanaClient(t *testing.T) {
-	// Create a test config
+	// Create a test zkpconfig
 	privateKey := solana.MustPrivateKeyFromBase58("4Z7cXSyeFR8wNGMVXUE1TwtKn5D5Vu7FzEv69dokLv7KrQk7h6pu4LF8ZRR9yQBhc7uSM9PiLpAkKktDD8kUmyHT")
 
 	keys := &external.Keys{
@@ -50,7 +50,7 @@ func TestNewSolanaClient(t *testing.T) {
 	}
 
 	if client.Config == nil {
-		t.Error("Expected config to be set")
+		t.Error("Expected zkpconfig to be set")
 	}
 
 	if client.RpcClient == nil {
@@ -96,9 +96,9 @@ func TestSolanaClientConfigIntegrity(t *testing.T) {
 
 	client := newSolanaTestClient(solanaConfig)
 
-	// Test that config is properly referenced
+	// Test that zkpconfig is properly referenced
 	if client.Config != solanaConfig {
-		t.Error("Expected config to reference the same object")
+		t.Error("Expected zkpconfig to reference the same object")
 	}
 
 	// Test that keys are accessible through client
@@ -217,7 +217,7 @@ func TestSolanaClientConcurrentAccess(t *testing.T) {
 
 	client := newSolanaTestClient(solanaConfig)
 
-	// Test concurrent access to client config
+	// Test concurrent access to client zkpconfig
 	done := make(chan bool, 10)
 
 	for i := 0; i < 10; i++ {

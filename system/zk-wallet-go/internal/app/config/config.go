@@ -21,10 +21,12 @@ import (
 // (PoC) — in production, these values would be stored securely and persisted in a DB.
 var (
 	// Public origin of this issuer server (used for metadata, redirect URI, etc.)
-	IssuerBaseURL = "http://localhost:8080"
+	IssuerBaseURL = "http://http://192.168.8.107:8080"
 
 	// URL of the external OIDC provider (e.g., DSNet / AGH SSO)
 	DsnetIssuer string
+
+	ZkpVerifierBaseURL string
 
 	// OAuth2 client credentials registered with the OIDC provider
 	OidcClientID     string
@@ -122,7 +124,7 @@ type StoredVC struct {
 // ---------------------------------------------------------------
 
 // MustEnv returns the value of an environment variable or logs a fatal error
-// if it is not defined. Used for required config values (e.g., CLIENT_ID).
+// if it is not defined. Used for required zkpconfig values (e.g., CLIENT_ID).
 func MustEnv(k string) string {
 	v := os.Getenv(k)
 	if v == "" {

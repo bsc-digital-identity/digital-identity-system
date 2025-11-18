@@ -188,6 +188,9 @@ func HandleVciCredential(w http.ResponseWriter, r *http.Request) {
 	gender := "unspecified"
 	birthdate := "2004-05-10"
 
+	age := 21
+	university := "AGH"
+
 	// Compose VC-JWT claims.
 	vcClaims := map[string]any{
 		"iss": config.IssuerBaseURL,
@@ -205,6 +208,9 @@ func HandleVciCredential(w http.ResponseWriter, r *http.Request) {
 				"student_id":     studentID,
 				"gender":         gender,
 				"birthdate":      birthdate,
+
+				"age":        age,
+				"university": university,
 			},
 		},
 	}

@@ -28,9 +28,9 @@ func TestLoadSolanaKeysSuccess(t *testing.T) {
 
 	// Temporarily change the working directory or modify the function to accept file paths
 	// For this test, we'll test the structure rather than file loading
-	t.Log("Testing Solana config structure")
+	t.Log("Testing Solana zkpconfig structure")
 
-	// Test that we can create a valid config structure
+	// Test that we can create a valid zkpconfig structure
 	privateKey := solana.MustPrivateKeyFromBase58("4Z7cXSyeFR8wNGMVXUE1TwtKn5D5Vu7FzEv69dokLv7KrQk7h6pu4LF8ZRR9yQBhc7uSM9PiLpAkKktDD8kUmyHT")
 
 	keys := &external.Keys{
@@ -88,7 +88,7 @@ func TestSharedSolanaConfigConcurrency(t *testing.T) {
 		Keys: keys,
 	}
 
-	// Test concurrent access to config (simulate what might happen in production)
+	// Test concurrent access to zkpconfig (simulate what might happen in production)
 	done := make(chan bool, 100)
 
 	for i := 0; i < 100; i++ {

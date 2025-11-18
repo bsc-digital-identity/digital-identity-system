@@ -3,40 +3,29 @@
     "info": {
         "description": "API to manage identities and verify ZKP proofs",
         "title": "Digital Identity System API",
-        "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:9000",
+    "host": "http://192.168.8.107:9000",
     "basePath": "/v1",
+    "schemes": ["http"],
+    "consumes": ["application/json"],
+    "produces": ["application/json"],
     "paths": {
-        "/v1/identity": {
+        "/identity": {
             "post": {
-                "description": "Creates an identity with optional parent_id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Identity"
-                ],
+                "tags": ["Identity"],
                 "summary": "Create a new identity",
+                "description": "Creates an identity with optional parent_id",
                 "parameters": [
                     {
-                        "description": "Identity info",
-                        "name": "body",
                         "in": "body",
+                        "name": "body",
                         "required": true,
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "identity_name": {
-                                    "type": "string"
-                                },
-                                "parent_id": {
-                                    "type": "integer"
-                                }
+                                "identity_name": { "type": "string" },
+                                "parent_id": { "type": "integer" }
                             }
                         }
                     }
@@ -44,48 +33,52 @@
                 "responses": {
                     "201": {
                         "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
+                        "schema": { "type": "object", "additionalProperties": true }
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
+                        "schema": { "type": "object", "additionalProperties": { "type": "string" } }
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
+                        "schema": { "type": "object", "additionalProperties": { "type": "string" } }
                     }
                 }
             }
         },
-        "/v1/identity/verify": {
-            "post": {
-                "description": "Queue a zero-knowledge proof verification request",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Verification"
-                ],
-                "summary": "Queue ZKP verification",
+        "/identity/{id}": {
+            "get": {
+                "tags": ["Identity"],
+                "summary": "Get identity by ID",
+                "description": "Returns identity info",
                 "parameters": [
                     {
-                        "description": "Verification request",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "Identity ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": { "type": "object", "additionalProperties": true }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": { "type": "object", "additionalProperties": { "type": "string" } }
+                    }
+                }
+            }
+        },
+        "/identity/verify": {
+            "post": {
+                "tags": ["Verification"],
+                "summary": "Queue ZKP verification",
+                "description": "Queue a zero-knowledge proof verification request",
+                "parameters": [
+                    {
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -97,72 +90,77 @@
                 "responses": {
                     "202": {
                         "description": "Accepted",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
+                        "schema": { "type": "object", "additionalProperties": { "type": "string" } }
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
+                        "schema": { "type": "object", "additionalProperties": { "type": "string" } }
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
+                        "schema": { "type": "object", "additionalProperties": { "type": "string" } }
                     }
                 }
             }
         },
-        "/v1/identity/{id}": {
-            "get": {
-                "description": "Returns identity info",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Identity"
-                ],
-                "summary": "Get identity by ID",
+        "/presentations/create": {
+            "post": {
+                "tags": ["Presentations"],
+                "summary": "Create a ZKP presentation request",
+                "description": "Returns a one-shot request binding public inputs and response URI.",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Identity ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/presentations.PresentationCreateRequest"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/presentations.PresentationCreateResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": { "type": "object", "additionalProperties": { "type": "string" } }
+                    }
+                }
+            }
+        },
+        "/presentations/verify": {
+            "post": {
+                "tags": ["Presentations"],
+                "summary": "Verify a ZKP proof submission",
+                "description": "Verifies the proof against the server-held verifying key for the request's schema hash.",
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/presentations.PresentationVerifyRequest"
                         }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/presentations.PresentationVerifyResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized / verification failed",
+                        "schema": { "type": "object", "additionalProperties": { "type": "string" } }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": { "type": "object", "additionalProperties": { "type": "string" } }
                     }
                 }
             }
@@ -172,12 +170,63 @@
         "model.ZeroKnowledgeProofVerificationRequest": {
             "type": "object",
             "properties": {
-                "identity_id": {
-                    "type": "string"
+                "identity_id": { "type": "string" },
+                "schema": { "type": "string" }
+            }
+        },
+        "presentations.PresentationCreateRequest": {
+            "type": "object",
+            "required": ["schema_json"],
+            "properties": {
+                "schema_json": {
+                    "type": "string",
+                    "description": "Dynamic-circuit schema JSON (stringified JSON)"
                 },
-                "schema": {
-                    "type": "string"
+                "public_inputs": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Optional echo; typically not needed"
+                },
+                "expires_in": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Optional TTL override in seconds"
                 }
+            }
+        },
+        "presentations.PresentationCreateResponse": {
+            "type": "object",
+            "properties": {
+                "request_id": { "type": "string" },
+                "schema_hash": { "type": "string" },
+                "schema_json": { "type": "string" },
+                "public_inputs": { "type": "object", "additionalProperties": true },
+                "response_uri": { "type": "string" },
+                "expires_at": { "type": "integer", "format": "int64" }
+            }
+        },
+        "presentations.PresentationVerifyRequest": {
+            "type": "object",
+            "required": ["request_id", "zkp_blob_b64"],
+            "properties": {
+                "request_id": { "type": "string" },
+                "zkp_blob_b64": {
+                    "type": "string",
+                    "description": "Borsh-serialized proof package, base64-encoded"
+                },
+                "public_inputs": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Optional echo of server-provided public_inputs"
+                }
+            }
+        },
+        "presentations.PresentationVerifyResponse": {
+            "type": "object",
+            "properties": {
+                "ok": { "type": "boolean" },
+                "request_id": { "type": "string" },
+                "verified_at": { "type": "string", "format": "date-time" }
             }
         }
     }

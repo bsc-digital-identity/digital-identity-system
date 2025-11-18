@@ -1,3 +1,4 @@
+// default_schema.go
 package zkp
 
 const DefaultAgeSchema = `{

@@ -1,3 +1,4 @@
+// internal/app/zkprequest/service.go
 package zkprequest
 
 import (
@@ -5,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"sync"
 	"time"
+
 	"zk-wallet-go/internal/app/zkp"
 
 	"github.com/consensys/gnark/backend/groth16"
@@ -16,12 +19,37 @@ type Service struct {
 	Store    RequestStore
 	Circuits CircuitRegistry
 
-	// Config
-	Audience    string        // e.g., https://your-verifier.example
-	ResponseURI string        // e.g., https://your-verifier.example/zkp/verify
-	TTL         time.Duration // validity for requests
-	// Security toggle: if true, use server-held VK by circuit; if false, accept client VK (dev only)
-	VerifyWithServerVK bool
+	Audience    string
+	ResponseURI string
+	TTL         time.Duration
+
+	// schema_hash -> serialized VK (server-held)
+	vkCache map[string][]byte
+	// schema_hash -> serialized PK (server-held)
+	pkCache map[string][]byte
+	// schema_hash -> canonical JSON schemy
+	schemaCache map[string][]byte
+
+	cacheMu sync.RWMutex
+}
+
+func NewService(store RequestStore, circuits CircuitRegistry, opts ...func(*Service)) *Service {
+	s := &Service{
+		Store:       store,
+		Circuits:    circuits,
+		Audience:    "http://localhost",
+		ResponseURI: "http://localhost/v1/presentations/verify",
+		TTL:         5 * time.Minute,
+
+		// 🔧 tu były złe typy – teraz wszystko jest []byte
+		vkCache:     make(map[string][]byte),
+		pkCache:     make(map[string][]byte),
+		schemaCache: make(map[string][]byte),
+	}
+	for _, o := range opts {
+		o(s)
+	}
+	return s
 }
 
 func (s *Service) defaultTTL() time.Duration {
@@ -68,7 +96,9 @@ func (s *Service) CreateRequest(circuitID string, includeSchema bool) (Presentat
 }
 
 // VerifySubmission checks the proof against the request.
-// Returns the parsed request (for audit) on success.
+// NOTE: w architekturze "Option A" w produkcji weryfikacja i tak będzie po stronie DI,
+// więc w wallet-serverze ta funkcja raczej nie będzie wywoływana – ale zostawiamy ją
+// poprawioną, żeby kod się kompilował.
 func (s *Service) VerifySubmission(sub ProofSubmission) (PresentationRequest, error) {
 	if sub.RequestID == "" || sub.ZkpBlobB64 == "" {
 		return PresentationRequest{}, errors.New("missing request_id or zkp_blob_b64")
@@ -102,25 +132,17 @@ func (s *Service) VerifySubmission(sub ProofSubmission) (PresentationRequest, er
 		}
 	}
 
-	// Verify
-	if s.VerifyWithServerVK {
-		// Use server-held VK for this circuit id (prod path)
-		vkBytes, ok := s.Circuits.VerifyingKey(req.CircuitID)
-		if !ok {
-			return PresentationRequest{}, errors.New("server VK not found for circuit")
-		}
-		vk := groth16.NewVerifyingKey(zkp.ElipticalCurveID) // keep same curve
-		if _, err := vk.ReadFrom(bytesReader(vkBytes)); err != nil {
-			return PresentationRequest{}, errors.New("cannot load server VK")
-		}
-		if err := groth16.Verify(res.Proof, vk, res.PublicWitness); err != nil {
-			return PresentationRequest{}, errors.New("verify failed")
-		}
-	} else {
-		// DEV ONLY: verify with client-provided VK from the blob
-		if err := groth16.Verify(res.Proof, res.VerifyingKey, res.PublicWitness); err != nil {
-			return PresentationRequest{}, errors.New("verify failed")
-		}
+	// Verify using server-held VK from CircuitRegistry (stary tryb z circuitID)
+	vkBytes, ok := s.Circuits.VerifyingKey(req.CircuitID)
+	if !ok {
+		return PresentationRequest{}, errors.New("server VK not found for circuit")
+	}
+	vk := groth16.NewVerifyingKey(zkp.ElipticalCurveID) // keep same curve
+	if _, err := vk.ReadFrom(bytesReader(vkBytes)); err != nil {
+		return PresentationRequest{}, errors.New("cannot load server VK")
+	}
+	if err := groth16.Verify(res.Proof, vk, res.PublicWitness); err != nil {
+		return PresentationRequest{}, errors.New("verify failed")
 	}
 
 	// one-shot consume

@@ -57,10 +57,10 @@ func (a *AppBuilder[T, U]) InitLogger(loggerArgs logger.GlobalLoggerConfig) AppB
 }
 
 func (a *AppBuilder[T, U]) LoadConfig(filePath string) AppBuilderInterface[T, U] {
-	a.Logger.Infof("Preparing to load config from %s ...", filePath)
+	a.Logger.Infof("Preparing to load zkpconfig from %s ...", filePath)
 	jsonConfig, err := utilities.ReadConfig[T, U](filePath)
 	if err != nil {
-		a.Logger.Error(err, "Failed to load config")
+		a.Logger.Error(err, "Failed to load zkpconfig")
 		panic(err)
 	}
 
@@ -97,12 +97,12 @@ func (a *AppBuilder[T, U]) InitRabbitmqConnection() AppBuilderInterface[T, U] {
 }
 
 func (a *AppBuilder[T, U]) InitRabbitmqRegistries() AppBuilderInterface[T, U] {
-	a.Logger.Info("Initializing Rabbitmq registries from config")
+	a.Logger.Info("Initializing Rabbitmq registries from zkpconfig")
 	rabbitmqConf := a.Config.GetRabbitmqConfig()
 
 	rabbitmq.InitializeConsumerRegistry(a.conn, rabbitmqConf.ConsumersConfig)
 	rabbitmq.InitializePublisherRegistry(a.conn, rabbitmqConf.PublishersConfig)
-	a.Logger.Info("Successfully initialized Rabbitmq registries from config")
+	a.Logger.Info("Successfully initialized Rabbitmq registries from zkpconfig")
 
 	return a
 }

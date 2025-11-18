@@ -38,7 +38,7 @@ func HandleCredentialIssuerMetadata(w http.ResponseWriter, r *http.Request) {
 		// What credentials this issuer can issue
 		"credentials_supported": []any{
 			map[string]any{
-				// Local identifier for this config (wallet requests this via scope/metadata)
+				// Local identifier for this zkpconfig (wallet requests this via scope/metadata)
 				"credential_configuration_id": "StudentCredential_JWT_v1",
 
 				// VC format
@@ -63,6 +63,16 @@ func HandleCredentialIssuerMetadata(w http.ResponseWriter, r *http.Request) {
 				"credential_definition": map[string]any{
 					"type": []string{"VerifiableCredential", "StudentCredential"},
 					"credentialSubject": map[string]any{
+						"age": map[string]any{
+							"display": []any{
+								map[string]any{"name": "Age", "locale": "en"},
+							},
+						},
+						"university": map[string]any{
+							"display": []any{
+								map[string]any{"name": "University", "locale": "en"},
+							},
+						},
 						"birthDate": map[string]any{
 							"display": []any{
 								map[string]any{"name": "Date of Birth", "locale": "en"},
@@ -99,7 +109,6 @@ func HandleCredentialIssuerMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Optional niceties (helps wallets discover keys):
-	// - advertise your JWKS (wallets/verifiers can also discover via .well-known)
 	// meta["jwks_uri"] = base + "/.well-known/jwks.json"
 
 	util.WriteJSON(w, meta)

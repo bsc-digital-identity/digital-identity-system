@@ -46,7 +46,7 @@ func (ac ApiConfig) GetRestApiPort() uint16 {
 }
 
 func (ac ApiConfig) GetDatabaseConnectionString() string {
-	// Prefer environment variable if set, fallback to config.json value
+	// Prefer environment variable if set, fallback to zkpconfig.json value
 	if env := os.Getenv("DB_CONNECTION_STRING"); env != "" {
 		return env
 	}

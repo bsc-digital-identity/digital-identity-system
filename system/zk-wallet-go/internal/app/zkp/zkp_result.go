@@ -1,3 +1,4 @@
+// zkp_result.go
 package zkp
 
 import (
@@ -10,14 +11,12 @@ import (
 
 type ZkpResult struct {
 	Proof         groth16.Proof
-	VerifyingKey  groth16.VerifyingKey
 	PublicWitness witness.Witness
 	TxHash        string `borsh_skip:"true"`
 }
 
 type intermediateSerializationStep struct {
 	Proof         []byte `borsh:"proof"`
-	VerifyingKey  []byte `borsh:"verifying_key"`
 	PublicWitness []byte `borsh:"public_witness"`
 }
 
@@ -28,8 +27,6 @@ func (zr *ZkpResult) SerializeBorsh() ([]byte, error) {
 		return nil, err
 	}
 
-	var vkBuf bytes.Buffer
-	_, err = zr.VerifyingKey.WriteTo(&vkBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +39,6 @@ func (zr *ZkpResult) SerializeBorsh() ([]byte, error) {
 
 	zkpSerializable := intermediateSerializationStep{
 		Proof:         proofBuf.Bytes(),
-		VerifyingKey:  vkBuf.Bytes(),
 		PublicWitness: witnessBuf.Bytes(),
 	}
 
@@ -63,8 +59,6 @@ func ReconstructZkpResult(serializedZkp []byte) (*ZkpResult, error) {
 		return nil, err
 	}
 
-	vk := groth16.NewVerifyingKey(ElipticalCurveID)
-	_, err = vk.ReadFrom(bytes.NewReader(deserialized.VerifyingKey))
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +71,6 @@ func ReconstructZkpResult(serializedZkp []byte) (*ZkpResult, error) {
 
 	return &ZkpResult{
 		Proof:         proof,
-		VerifyingKey:  vk,
 		PublicWitness: witness,
 	}, nil
 }
