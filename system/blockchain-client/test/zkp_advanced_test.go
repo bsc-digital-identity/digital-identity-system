@@ -9,6 +9,28 @@ import (
 	"github.com/consensys/gnark/backend/groth16"
 )
 
+const stringEqualitySchema = `{
+  "schema_id": "string_equality_check",
+  "version": "1.0.0",
+  "fields": [
+    {"name": "favorite_color", "type": "string", "required": true, "secret": true}
+  ],
+  "constraints": [
+    {"type": "comparison", "fields": ["favorite_color"], "operator": "eq", "value": "blue"}
+  ]
+}`
+
+const numberComparisonSchema = `{
+  "schema_id": "score_at_least_five",
+  "version": "1.0.0",
+  "fields": [
+    {"name": "score", "type": "number", "required": true, "secret": true}
+  ],
+  "constraints": [
+    {"type": "comparison", "fields": ["score"], "operator": "ge", "value": 5}
+  ]
+}`
+
 func newDOBBase(day, month, year int) domain.ZkpCircuitBase {
 	return domain.ZkpCircuitBase{
 		VerifiedValues: []domain.ZkpField[any]{
@@ -66,6 +88,92 @@ func TestZkpEdgeCases(t *testing.T) {
 	}
 }
 
+func TestZkpStringEqualityConstraint(t *testing.T) {
+	base := domain.ZkpCircuitBase{
+		SchemaJSON: stringEqualitySchema,
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "favorite_color", Value: "blue"},
+		},
+	}
+
+	zkpRes, err := zkp.CreateZKP(base)
+	if err != nil {
+		t.Fatalf("Failed to create ZKP for string equality schema: %v", err)
+	}
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil for string equality schema")
+	}
+
+	if err := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); err != nil {
+		t.Fatalf("Expected string equality ZKP verification to pass but got error: %v", err)
+	}
+}
+
+func TestZkpStringEqualityConstraintFailure(t *testing.T) {
+	base := domain.ZkpCircuitBase{
+		SchemaJSON: stringEqualitySchema,
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "favorite_color", Value: "green"},
+		},
+	}
+
+	zkpRes, err := zkp.CreateZKP(base)
+	if err != nil {
+		// Creation failure due to unsatisfied constraint is acceptable.
+		return
+	}
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil despite no error for invalid string input")
+	}
+
+	if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr == nil {
+		t.Fatal("Expected verification to fail for mismatched string input but it passed")
+	}
+}
+
+func TestZkpNumberComparisonConstraint(t *testing.T) {
+	base := domain.ZkpCircuitBase{
+		SchemaJSON: numberComparisonSchema,
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "score", Value: 10},
+		},
+	}
+
+	zkpRes, err := zkp.CreateZKP(base)
+	if err != nil {
+		t.Fatalf("Failed to create ZKP for numeric comparison schema: %v", err)
+	}
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil for numeric comparison schema")
+	}
+
+	if err := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); err != nil {
+		t.Fatalf("Expected numeric comparison ZKP verification to pass but got error: %v", err)
+	}
+}
+
+func TestZkpNumberComparisonConstraintFailure(t *testing.T) {
+	base := domain.ZkpCircuitBase{
+		SchemaJSON: numberComparisonSchema,
+		VerifiedValues: []domain.ZkpField[any]{
+			{Key: "score", Value: 3},
+		},
+	}
+
+	zkpRes, err := zkp.CreateZKP(base)
+	if err != nil {
+		// Creation may fail if circuit evaluation detects the violation early.
+		return
+	}
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil despite no error for invalid numeric input")
+	}
+
+	if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr == nil {
+		t.Fatal("Expected verification to fail for numeric comparison but it passed")
+	}
+}
+
 func TestZkpInvalidInputs(t *testing.T) {
 	invalidCases := []struct {
 		name  string
@@ -87,7 +195,7 @@ func TestZkpInvalidInputs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			zkpRes, err := zkp.CreateZKP(newDOBBase(tc.day, tc.month, tc.year))
 
-			// Even with invalid inputs, the ZKP creation might succeed
+			// Even with invalid inputs, the ZKP creation might succeed,
 			// but verification should handle the logic correctly
 			if err == nil && zkpRes != nil {
 				// Test that verification behaves correctly with invalid dates
@@ -358,7 +466,6 @@ func TestZkpMemoryUsage(t *testing.T) {
 	}
 }
 
-/*
 func TestZkpBoundaryDates(t *testing.T) {
 	// Test boundary conditions around the 18-year threshold
 	now := time.Now()
@@ -379,27 +486,38 @@ func TestZkpBoundaryDates(t *testing.T) {
 
 	for _, tc := range boundaryTests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Calculate the birth date based on offset
+			// Calculate the birthdate based on offset
 			birthDate := now.AddDate(-18, 0, tc.daysOffset)
 
-			zkpRes, err := zkp.CreateZKP(birthDate.Day(), int(birthDate.Month()), birthDate.Year())
-			if err != nil && tc.shouldVerify {
-				t.Fatalf("Failed to create ZKP for %s: %v", tc.name, err)
-			}
+			zkpRes, err := zkp.CreateZKP(newDOBBase(birthDate.Day(), int(birthDate.Month()), birthDate.Year()))
 
 			if tc.shouldVerify {
-				err = groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
 				if err != nil {
-					t.Errorf("Expected verification to pass for %s but got error: %v", tc.name, err)
+					t.Fatalf("Failed to create ZKP for %s: %v", tc.name, err)
 				}
-			} else {
-				// For cases that should fail, check that verification actually fails
-				err = groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
-				if err == nil {
-					t.Errorf("Expected verification to fail for %s but it passed", tc.name)
+				if zkpRes == nil {
+					t.Fatalf("ZKP result is nil for %s despite no error", tc.name)
 				}
+
+				verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
+				if verifyErr != nil {
+					t.Errorf("Expected verification to pass for %s but got error: %v", tc.name, verifyErr)
+				}
+				return
+			}
+
+			// Failures may surface during circuit creation or verification; either is acceptable.
+			if err != nil {
+				return
+			}
+			if zkpRes == nil {
+				t.Fatalf("ZKP result is nil for %s without an accompanying error", tc.name)
+			}
+
+			verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
+			if verifyErr == nil {
+				t.Errorf("Expected verification to fail for %s but it passed", tc.name)
 			}
 		})
 	}
 }
-*/

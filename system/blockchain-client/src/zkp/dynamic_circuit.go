@@ -1,6 +1,8 @@
 package zkp
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math"
 	"time"
@@ -161,6 +163,19 @@ func (dc *DynamicCircuit) applyComparisonConstraint(api frontend.API, constraint
 		return fmt.Errorf("comparison constraint must declare at least one field")
 	}
 
+	fieldName := constraint.Fields[0]
+	fieldDef, ok := dc.fieldMetadata[fieldName]
+	if !ok {
+		return fmt.Errorf("comparison constraint references unknown field '%s'", fieldName)
+	}
+	if fieldDef.Type == FieldTypeString {
+		switch constraint.Operator {
+		case "equal", "eq", "not_equal", "ne":
+		default:
+			return fmt.Errorf("string fields only support equality comparisons, got '%s'", constraint.Operator)
+		}
+	}
+
 	left, err := dc.fieldVariable(constraint.Fields[0])
 	if err != nil {
 		return err
@@ -173,7 +188,7 @@ func (dc *DynamicCircuit) applyComparisonConstraint(api frontend.API, constraint
 			return err
 		}
 	} else {
-		number, err := constraint.ValueAsInt()
+		number, err := dc.constantValueForField(fieldDef, constraint.Value)
 		if err != nil {
 			return err
 		}
@@ -274,4 +289,19 @@ func (dc *DynamicCircuit) fieldVariable(name string) (frontend.Variable, error) 
 		return dc.PublicValues[idx], nil
 	}
 	return nil, fmt.Errorf("unknown circuit field '%s'", name)
+}
+
+func (dc *DynamicCircuit) constantValueForField(field FieldDefinition, raw json.RawMessage) (interface{}, error) {
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("comparison constraint missing constant value for field '%s'", field.Name)
+	}
+
+	var decoded interface{}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	if err := dec.Decode(&decoded); err != nil {
+		return nil, fmt.Errorf("invalid constant value for field '%s': %w", field.Name, err)
+	}
+
+	return convertToVariable(field, decoded)
 }

@@ -1,8 +1,8 @@
 package test
 
 import (
-	domain "blockchain-client/src/types/domain"
-	zkp "blockchain-client/src/zkp"
+	"blockchain-client/src/types/domain"
+	"blockchain-client/src/zkp"
 	"testing"
 	"time"
 
@@ -43,16 +43,23 @@ func TestZkpShouldProveRightOver18(t *testing.T) {
 	}
 
 	if !tt.shouldVerify {
-		t.Log("Function that should not verify passed")
+		if err != nil {
+			return
+		}
+		if zkpRes == nil {
+			t.Fatal("ZKP result is nil without error")
+		}
+		if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr == nil {
+			t.Error("Expected verification to fail but it passed")
+		}
 		return
 	}
 
-	err = groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
-	if tt.shouldVerify && err != nil {
-		t.Errorf("Expected verification to pass but got error: %v", err)
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil")
 	}
-	if !tt.shouldVerify && err == nil {
-		t.Error("Expected verification to fail but it passed")
+	if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr != nil {
+		t.Errorf("Expected verification to pass but got error: %v", verifyErr)
 	}
 }
 
@@ -65,18 +72,24 @@ func TestZkpShouldProveRightExactly18(t *testing.T) {
 	}
 
 	if !tt.shouldVerify {
-		t.Log("Function that should not verify passed")
+		if err != nil {
+			return
+		}
+		if zkpRes == nil {
+			t.Fatal("ZKP result is nil without error")
+		}
+		if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr == nil {
+			t.Error("Expected verification to fail but it passed")
+		}
 		return
 	}
 
-	err = groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
-	if tt.shouldVerify && err != nil {
-		t.Errorf("Expected verification to pass but got error: %v", err)
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil")
 	}
-	if !tt.shouldVerify && err == nil {
-		t.Error("Expected verification to fail but it passed")
+	if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr != nil {
+		t.Errorf("Expected verification to pass but got error: %v", verifyErr)
 	}
-
 }
 
 func TestZkpShouldProveWrongUnder18(t *testing.T) {
@@ -88,16 +101,23 @@ func TestZkpShouldProveWrongUnder18(t *testing.T) {
 	}
 
 	if !tt.shouldVerify {
-		t.Log("Function that should not verify passed")
+		if err != nil {
+			return
+		}
+		if zkpRes == nil {
+			t.Fatal("ZKP result is nil without error")
+		}
+		if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr == nil {
+			t.Error("Expected verification to fail but it passed")
+		}
 		return
 	}
 
-	err = groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness)
-	if tt.shouldVerify && err != nil {
-		t.Errorf("Expected verification to pass but got error: %v", err)
+	if zkpRes == nil {
+		t.Fatal("ZKP result is nil")
 	}
-	if !tt.shouldVerify && err == nil {
-		t.Error("Expected verification to fail but it passed")
+	if verifyErr := groth16.Verify(zkpRes.Proof, zkpRes.VerifyingKey, zkpRes.PublicWitness); verifyErr != nil {
+		t.Errorf("Expected verification to pass but got error: %v", verifyErr)
 	}
 }
 
