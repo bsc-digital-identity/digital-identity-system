@@ -7,7 +7,6 @@ require (
 	github.com/consensys/gnark-crypto v0.18.0
 	github.com/gagliardetto/solana-go v1.13.0
 	github.com/gin-gonic/gin v1.10.1
-	github.com/near/borsh-go v0.3.1
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/swaggo/swag v1.16.6
 )

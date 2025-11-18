@@ -1,3 +1,4 @@
+// schema.go
 package zkp
 
 import (

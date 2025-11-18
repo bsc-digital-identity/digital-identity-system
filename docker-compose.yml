@@ -64,7 +64,10 @@ services:
       - PAYER_KEYPAIR_PATH=/app/id.json
       - SOLANA_URL=http://host.docker.internal:8899
     volumes:
-      - "${KEYPAIR_PATH}:/app/id.json:ro"
+      - type: bind
+        source: ${KEYPAIR_PATH}
+        target: /app/id.json
+        read_only: true
     ports:
       - "8888:8888"
     networks:

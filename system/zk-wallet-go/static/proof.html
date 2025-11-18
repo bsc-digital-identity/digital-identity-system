@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Mock Wallet - Minimal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+            sans-serif;
+            max-width: 800px;
+            margin: 24px auto;
+            padding: 0 16px;
+            line-height: 1.5;
+        }
+        input[type="text"], input[type="date"] {
+            width: 100%;
+            padding: 8px 10px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+        button {
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            background: #111827;
+            color: white;
+            font-size: 1rem;
+        }
+        pre {
+            background: #f3f4f6;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 16px;
+            white-space: pre-wrap;
+        }
+        .status { margin-top: 10px; font-size: 1rem; }
+        .ok { color: #059669; }
+        .error { color: #dc2626; }
+        .pending { color: #d97706; }
+    </style>
+</head>
+<body>
+
+<h1>Minimal Mock Wallet</h1>
+<p>Wklej <code>request_id</code> i <strong>datę urodzenia</strong>, a strona wyśle:</br>
+    <code>POST /wallet/zkp/create</code>
+</p>
+
+<input id="reqInput" type="text" placeholder="request_id">
+<input id="dobInput" type="date" placeholder="birthdate">
+
+<button id="runBtn">Verify</button>
+
+<div id="status" class="status"></div>
+
+<pre id="verifyBox"></pre>
+
+<script>
+    const statusEl = document.getElementById("status");
+    const verifyBox = document.getElementById("verifyBox");
+
+    function setStatus(msg, cls) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (cls || "");
+    }
+
+    async function run() {
+        const reqId = document.getElementById("reqInput").value.trim();
+        const dobStr = document.getElementById("dobInput").value.trim();
+
+        if (!reqId) {
+            setStatus("Provide request_id.", "error");
+            return;
+        }
+
+        if (!dobStr) {
+            setStatus("Provide birthdate.", "error");
+            return;
+        }
+
+        // YYYY-MM-DD → timestamp (UTC, sekundy)
+        const dobTs = Math.floor(new Date(dobStr + "T00:00:00Z").getTime() / 1000);
+
+        setStatus("Calling /wallet/zkp/create...", "pending");
+        verifyBox.textContent = "";
+
+        try {
+            const resp = await fetch("/wallet/zkp/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    request_id: reqId,
+                    inputs: {
+                        birth_ts: dobTs   // <-- NAZWA DOPASOWANA DO SCHEMY
+                    }
+                })
+            });
+
+            const text = await resp.text();
+
+            try {
+                verifyBox.textContent = JSON.stringify(JSON.parse(text), null, 2);
+            } catch {
+                verifyBox.textContent = text;
+            }
+
+            if (resp.ok) setStatus("Done.", "ok");
+            else setStatus("Verify failed: " + resp.status, "error");
+
+        } catch (err) {
+            setStatus("Fetch error: " + err, "error");
+        }
+    }
+
+    document.getElementById("runBtn").addEventListener("click", run);
+</script>
+
+</body>
+</html>

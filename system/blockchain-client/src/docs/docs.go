@@ -104,7 +104,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:9000",
+	Host:             "192.168.8.107:9000",
 	BasePath:         "/bc/v1",
 	Schemes:          []string{},
 	Title:            "Digital Identity System - Blockchain Client",

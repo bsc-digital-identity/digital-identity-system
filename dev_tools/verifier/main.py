@@ -14,7 +14,7 @@ message = {
 credentials = pika.PlainCredentials('verifier_mock', 'verifier_mock')
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(
-        host='localhost',
+        host='192.168.8.107',
         port=5672,
         credentials=credentials
     )

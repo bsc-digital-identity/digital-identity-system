@@ -1,121 +1,56 @@
-basePath: /v1
 definitions:
-  model.ZeroKnowledgeProofVerificationRequest:
-    properties:
-      identity_id:
-        type: string
-      schema:
-        type: string
+  presentations.PresentationCreateRequest:
     type: object
-host: localhost:9000
-info:
-  contact: {}
-  description: API to manage identities and verify ZKP proofs
-  title: Digital Identity System API
-  version: "1.0"
-paths:
-  /v1/identity:
-    post:
-      consumes:
-      - application/json
-      description: Creates an identity with optional parent_id
-      parameters:
-      - description: Identity info
-        in: body
-        name: body
-        required: true
-        schema:
-          properties:
-            identity_name:
-              type: string
-            parent_id:
-              type: integer
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Create a new identity
-      tags:
-      - Identity
-  /v1/identity/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Returns identity info
-      parameters:
-      - description: Identity ID
-        in: path
-        name: id
-        required: true
+    required: [schema_json]
+    properties:
+      schema_json:
         type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get identity by ID
-      tags:
-      - Identity
-  /v1/identity/verify:
-    post:
-      consumes:
-      - application/json
-      description: Queue a zero-knowledge proof verification request
-      parameters:
-      - description: Verification request
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/model.ZeroKnowledgeProofVerificationRequest'
-      produces:
-      - application/json
-      responses:
-        "202":
-          description: Accepted
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Queue ZKP verification
-      tags:
-      - Verification
-swagger: "2.0"
+        description: Dynamic-circuit schema JSON (stringified JSON)
+      public_inputs:
+        type: object
+        additionalProperties: true
+        description: Optional echo; usually not needed
+      expires_in:
+        type: integer
+        format: int64
+        description: Optional TTL override in seconds
+  presentations.PresentationCreateResponse:
+    type: object
+    properties:
+      request_id:
+        type: string
+      schema_hash:
+        type: string
+      schema_json:
+        type: string
+      public_inputs:
+        type: object
+        additionalProperties: true
+      response_uri:
+        type: string
+      expires_at:
+        type: integer
+        format: int64
+  presentations.PresentationVerifyRequest:
+    type: object
+    required: [request_id, zkp_blob_b64]
+    properties:
+      request_id:
+        type: string
+      zkp_blob_b64:
+        type: string
+        description: Proof package serialized with Borsh and base64-encoded
+      public_inputs:
+        type: object
+        additionalProperties: true
+        description: Optional echo of the server-provided public_inputs
+  presentations.PresentationVerifyResponse:
+    type: object
+    properties:
+      ok:
+        type: boolean
+      request_id:
+        type: string
+      verified_at:
+        type: string
+        format: date-time

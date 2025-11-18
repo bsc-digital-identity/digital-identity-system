@@ -1,3 +1,4 @@
+// dynamic_circuit.go
 package zkp
 
 import (
@@ -201,60 +202,35 @@ func (dc *DynamicCircuit) applyComparisonConstraint(api frontend.API, constraint
 }
 
 func (dc *DynamicCircuit) applyAgeConstraint(api frontend.API, constraint ConstraintDefinition) error {
-	if len(constraint.Fields) != 3 {
-		return fmt.Errorf("age constraint expects three fields (year, month, day)")
+	// Nowa semantyka:
+	// - constraint.Fields[0] = birthdate (UNIX timestamp w sekundach)
+	// - constraint.Value = minimalny wiek w latach (int)
+	if len(constraint.Fields) != 1 {
+		return fmt.Errorf("age constraint expects one field (birthdate timestamp)")
 	}
 
-	minAge, err := constraint.ValueAsInt()
+	minAgeYears, err := constraint.ValueAsInt()
 	if err != nil {
 		return err
 	}
 
-	yearVar, err := dc.fieldVariable(constraint.Fields[0])
-	if err != nil {
-		return err
-	}
-	monthVar, err := dc.fieldVariable(constraint.Fields[1])
-	if err != nil {
-		return err
-	}
-	dayVar, err := dc.fieldVariable(constraint.Fields[2])
+	// Sekundy na rok – przybliżenie, na MVP wystarczy
+	const secondsPerYear = int64(365 * 24 * 60 * 60)
+
+	birthTsVar, err := dc.fieldVariable(constraint.Fields[0])
 	if err != nil {
 		return err
 	}
 
-	currentTime := time.Now()
-	currentYear := currentTime.Year()
-	currentMonth := int(currentTime.Month())
-	currentDay := currentTime.Day()
+	now := time.Now().Unix()
+	minBirthTs := now - int64(minAgeYears)*secondsPerYear
 
-	minValidYear := currentYear - int(minAge)
-	minValidYearVar := frontend.Variable(minValidYear)
-	currentMonthVar := frontend.Variable(currentMonth)
-	currentDayVar := frontend.Variable(currentDay)
+	// birthdate <= now - minAge → jesteś co najmniej minAge lat
+	api.AssertIsLessOrEqual(birthTsVar, frontend.Variable(minBirthTs))
 
-	api.AssertIsLessOrEqual(yearVar, minValidYearVar)
-
-	yearIsMinValid := api.IsZero(api.Sub(yearVar, minValidYearVar))
-
-	api.AssertIsLessOrEqual(1, monthVar)
-	api.AssertIsLessOrEqual(monthVar, 12)
-
-	api.AssertIsLessOrEqual(monthVar, api.Select(yearIsMinValid, currentMonthVar, 12))
-
-	monthIsCurrent := api.IsZero(api.Sub(monthVar, currentMonthVar))
-
-	api.AssertIsLessOrEqual(1, dayVar)
-	api.AssertIsLessOrEqual(dayVar, 31)
-
-	api.AssertIsLessOrEqual(
-		dayVar,
-		api.Select(
-			api.And(yearIsMinValid, monthIsCurrent),
-			currentDayVar,
-			31,
-		),
-	)
+	// Opcjonalnie: sanity check zakresu birthdate (np. > 1900 roku itd.)
+	// minValidTs := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+	// api.AssertIsLessOrEqual(frontend.Variable(minValidTs), birthTsVar)
 
 	return nil
 }

@@ -63,7 +63,7 @@ The blockchain client requires Solana keypairs for operation:
 cd system/blockchain-client
 
 # 1. Your Solana account keypair (for transaction signing and payment)
-cp ~/.config/solana/id.json ./id.json
+cp ~/.zkpconfig/solana/id.json ./id.json
 
 # Fund your account with test SOL (for transaction fees)
 solana airdrop 2 $(solana-keygen pubkey ./id.json)

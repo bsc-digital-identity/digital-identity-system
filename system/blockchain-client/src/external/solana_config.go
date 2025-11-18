@@ -40,7 +40,7 @@ func LoadSolanaKeys() (*SharedSolanaConfig, error) {
 	keypairPath := os.Getenv("PAYER_KEYPAIR_PATH")
 	if keypairPath == "" {
 		homeDir, _ := os.UserHomeDir()
-		keypairPath = filepath.Join(homeDir, ".config", "solana", "id.json")
+		keypairPath = filepath.Join(homeDir, ".zkpconfig", "solana", "id.json")
 	}
 	payerPriv, err := solana.PrivateKeyFromSolanaKeygenFile(keypairPath)
 	if err != nil {
