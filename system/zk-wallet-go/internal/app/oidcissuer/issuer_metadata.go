@@ -38,14 +38,14 @@ func HandleCredentialIssuerMetadata(w http.ResponseWriter, r *http.Request) {
 		// What credentials this issuer can issue
 		"credentials_supported": []any{
 			map[string]any{
-				// Local identifier for this zkpconfig (wallet requests this via scope/metadata)
-				"credential_configuration_id": "StudentCredential_JWT_v1",
+				// Local identifier for this ZK config / credential type
+				"credential_configuration_id": "AgeOver18_JWT_v1",
 
 				// VC format
 				"format": "jwt_vc_json",
 
 				// OIDC scope the wallet requests to obtain this VC
-				"scope": "student",
+				"scope": "age_over_18",
 
 				// Which algs the issuer uses to sign the VC (the JWT)
 				"credential_signing_alg_values_supported": []string{"EdDSA", "ES256"},
@@ -59,38 +59,17 @@ func HandleCredentialIssuerMetadata(w http.ResponseWriter, r *http.Request) {
 					},
 				},
 
-				// The VC's high-level definition (types + subject claim descriptions)
+				// VC definition aligned with the ZK schema: birth_ts is the secret field in the circuit,
+				// but still a claim in the credential itself.
 				"credential_definition": map[string]any{
-					"type": []string{"VerifiableCredential", "StudentCredential"},
+					"type": []string{"VerifiableCredential", "AgeOver18Credential"},
 					"credentialSubject": map[string]any{
-						"age": map[string]any{
+						"birth_ts": map[string]any{
 							"display": []any{
-								map[string]any{"name": "Age", "locale": "en"},
-							},
-						},
-						"university": map[string]any{
-							"display": []any{
-								map[string]any{"name": "University", "locale": "en"},
-							},
-						},
-						"birthDate": map[string]any{
-							"display": []any{
-								map[string]any{"name": "Date of Birth", "locale": "en"},
-							},
-						},
-						"student_id": map[string]any{
-							"display": []any{
-								map[string]any{"name": "Student ID", "locale": "en"},
-							},
-						},
-						"student_status": map[string]any{
-							"display": []any{
-								map[string]any{"name": "Student Status", "locale": "en"},
-							},
-						},
-						"gender": map[string]any{
-							"display": []any{
-								map[string]any{"name": "Gender", "locale": "en"},
+								map[string]any{
+									"name":   "Birth timestamp (UNIX seconds)",
+									"locale": "en",
+								},
 							},
 						},
 					},
@@ -99,8 +78,8 @@ func HandleCredentialIssuerMetadata(w http.ResponseWriter, r *http.Request) {
 				// Wallet UX labels
 				"display": []any{
 					map[string]any{
-						"name":        "AGH Student Credential",
-						"description": "Official credential confirming active student status at AGH University.",
+						"name":        "Age over 18 credential",
+						"description": "Credential containing birth timestamp to prove that the holder is at least 18 years old via zero-knowledge proof.",
 						"locale":      "en",
 					},
 				},

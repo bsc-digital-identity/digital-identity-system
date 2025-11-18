@@ -14,12 +14,13 @@ import (
 	"zk-wallet-go/internal/app/handlers"
 	"zk-wallet-go/internal/app/keys"
 	"zk-wallet-go/internal/app/oidcissuer"
+	"zk-wallet-go/internal/app/vcstore"
 	"zk-wallet-go/internal/app/zkprequest"
 	"zk-wallet-go/pkg/util"
 )
 
 func main() {
-	// Load .env file (works when running from cmd/wallet-server)
+	// Wczytanie .env (dla uruchamiania lokalnie)
 	_ = godotenv.Load()
 
 	// --- Environment configuration ---
@@ -31,13 +32,11 @@ func main() {
 		"OIDC_REDIRECT_URI",
 		config.IssuerBaseURL+"/auth/dsnet/callback",
 	)
-	// external ZKP verifier (presentation request service, e.g. :9000)
 	config.ZkpVerifierBaseURL = config.MustEnv("ZKP_VERIFIER_BASE_URL")
 
-	// Read PORT from env
 	port := config.MustEnv("PORT")
 
-	// --- OIDC discovery (DSNet as OP) ---
+	// --- OIDC discovery (DSNet jako OP) ---
 	var err error
 	config.OidcProvider, err = oidc.NewProvider(
 		context.Background(),
@@ -70,6 +69,15 @@ func main() {
 	// --- Issuer keypair + JWKS ---
 	keys.GenerateIssuerKey()
 
+	// --- VCStore + Handlers ---
+	vcStore := vcstore.NewInMemoryVCStore()
+
+	// portfel (import, list, show, verify, ingest) oparty na VCStore
+	walletHandler := handlers.NewWalletHandler(vcStore)
+
+	// ZKP handler, który bierze dane do dowodu z VCStore
+	zkpWalletHandler := handlers.NewZkpHandler(vcStore)
+
 	// --- Router setup ---
 	mux := http.NewServeMux()
 
@@ -92,17 +100,23 @@ func main() {
 	mux.HandleFunc("/oidc4vci/token", handlers.HandleVciToken)
 	mux.HandleFunc("/oidc4vci/credential", handlers.HandleVciCredential)
 
-	// --- Wallet MVP endpoints (VC storage + verification) ---
-	mux.HandleFunc("/wallet/import-offer", handlers.HandleWalletImportOffer)
-	mux.HandleFunc("/wallet/vcs", handlers.HandleWalletList)
-	mux.HandleFunc("/wallet/vcs/", handlers.HandleWalletShow)
-	mux.HandleFunc("/wallet/verify", handlers.HandleWalletVerify)
-	mux.HandleFunc("/wallet/vcs-pretty/", handlers.HandleWalletClaims)
-	mux.HandleFunc("/wallet/ingest", handlers.HandleWalletIngest)
+	// --- Wallet endpoints oparte na VCStore ---
+	// import-offer starego typu (tylko offer) możesz zostawić lub docelowo zastąpić ingestem
+	mux.HandleFunc("/wallet/import-offer", walletHandler.HandleWalletImportOffer)
+
+	// unified ingest (credential OR offer) – MUSI być metodą na WalletHandler,
+	// przerobioną tak, żeby używała vcStore.Save(...)
+	mux.HandleFunc("/wallet/ingest", walletHandler.HandleWalletIngest)
+
+	// lista / pojedynczy VC / verify – przez VCStore
+	mux.HandleFunc("/wallet/vcs", walletHandler.HandleWalletList)
+	mux.HandleFunc("/wallet/vcs/", walletHandler.HandleWalletShow)
+	mux.HandleFunc("/wallet/verify", walletHandler.HandleWalletVerify)
+
+	// pretty claims do debugowania → ZkpHandler oparty na VCStore
+	mux.HandleFunc("/wallet/vcs-pretty/", zkpWalletHandler.HandleWalletClaims)
 
 	// --- Local ZKP Presentation Request service (demo RP) ---
-	// To jest lokalny RP z domyślnym schematem age_over_18; niezależny od dynamicznego schematu
-	// używanego przez zewnętrzny verifier na :9000.
 	zkpSvc := zkprequest.NewService(
 		&zkprequest.InMemoryStore{},
 		&zkprequest.StaticRegistry{
@@ -117,19 +131,13 @@ func main() {
 
 	zkpHandlers := &zkprequest.Handlers{Svc: zkpSvc}
 
-	// Local presentation request endpoints (demo)
 	mux.HandleFunc("/zkp/request", zkpHandlers.Request)
 	mux.HandleFunc("/zkp/verify", zkpHandlers.Verify)
 
 	// --- Dynamic ZKP integration with external verifier ---
-	// 1) Given request_id -> fetch descriptor & schema from {ZKP_VERIFIER_BASE_URL}
 	mux.HandleFunc("/wallet/zkp/fetch-descriptor", handlers.HandleFetchDescriptor)
-	// 2) Given request_id + inputs -> fetch schema, build circuit, create ZKP
-	mux.HandleFunc("/wallet/zkp/create", handlers.HandleZkpCreate)
-	// 3) Dev-only endpoint to "force-verify" proof on external verifier
-	//mux.HandleFunc("/wallet/zkp/verify", handlers.HandleVerifyProxy)
+	mux.HandleFunc("/wallet/zkp/create", zkpWalletHandler.HandleZkpCreate)
 
-	// --- Start HTTP server ---
 	log.Printf("Listening on :%s (public origin: %s)", port, config.IssuerBaseURL)
 	if err := http.ListenAndServe(":"+port, util.WithCORS(mux)); err != nil {
 		log.Fatal(err)

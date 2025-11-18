@@ -6,9 +6,10 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
 	"zk-wallet-go/internal/app/config"
+	"zk-wallet-go/internal/app/vcstore"
 	"zk-wallet-go/pkg/util"
-	"zk-wallet-go/pkg/util/timeutil"
 
 	"github.com/lestrrat-go/jwx/v2/jws"
 )
@@ -38,8 +39,8 @@ type IngestResponse struct {
 
 // HandleWalletIngest accepts either a direct compact JWS credential or a credential offer,
 // optionally redeems the offer (token → credential), verifies the VC (best-effort),
-// stores it (if requested), and returns a normalized response with metadata.
-func HandleWalletIngest(w http.ResponseWriter, r *http.Request) {
+// stores it in VCStore (if requested), and returns a normalized response with metadata.
+func (h *WalletHandler) HandleWalletIngest(w http.ResponseWriter, r *http.Request) {
 	var in IngestRequest
 	// Parse incoming JSON request.
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -128,7 +129,6 @@ func HandleWalletIngest(w http.ResponseWriter, r *http.Request) {
 	msg, err := jws.Verify([]byte(compact), jws.WithKeySet(config.IssuerJWKSet))
 	if err != nil {
 		valid = false // If verification fails, we still proceed with best-effort decode.
-		// best-effort decode will likely be empty if verify failed
 	}
 
 	// Best-effort decode of payload for transparency/debugging.
@@ -149,30 +149,23 @@ func HandleWalletIngest(w http.ResponseWriter, r *http.Request) {
 	vcID := util.Sha256hex([]byte(compact))
 	stored := false
 
-	// Optionally store the credential in the in-memory wallet cache.
+	// Optionally store the credential in VCStore.
 	if store {
-		// Choose a display name (last declared type if present).
-		display := "Credential"
-		if len(pl.VC.Type) > 0 {
-			display = pl.VC.Type[len(pl.VC.Type)-1]
+		vc := vcstore.VerifiableCredential{
+			ID:        vcID,
+			Format:    "jwt_vc_json",
+			Raw:       compact,
+			Issuer:    pl.Iss,
+			Subject:   pl.Sub,
+			Types:     pl.VC.Type,
+			CreatedAt: time.Now().UTC(),
 		}
 
-		config.WalletMu.Lock()
-		// Avoid overwriting if the VC already exists.
-		if _, exists := config.WalletVCs[vcID]; !exists {
-			config.WalletVCs[vcID] = config.StoredVC{
-				ID:          vcID,
-				Format:      "jwt_vc_json",
-				Credential:  compact,
-				Issuer:      pl.Iss,
-				Subject:     pl.Sub,
-				Types:       pl.VC.Type,
-				ReceivedAt:  timeutil.TimeUTC{T: time.Now().UTC().Unix()},
-				DisplayName: display,
-			}
+		if err := h.VCs.Save(vc); err != nil {
+			http.Error(w, "vcstore save failed: "+err.Error(), http.StatusInternalServerError)
+			return
 		}
 		stored = true
-		config.WalletMu.Unlock()
 	}
 
 	// Return a normalized response with verification result and parsed info.

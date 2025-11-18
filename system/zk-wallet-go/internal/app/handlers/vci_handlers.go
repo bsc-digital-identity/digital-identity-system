@@ -157,7 +157,7 @@ func HandleVciToken(w http.ResponseWriter, r *http.Request) {
 // Flow summary:
 // 1. Validate bearer token and expiration.
 // 2. (Normally) verify wallet proof-of-possession using c_nonce.
-// 3. Create a VC payload with example claims.
+// 3. Create a VC payload with claims aligned with the age_over_18_ts schema.
 // 4. Sign using issuer's Ed25519 private key.
 // 5. Return the signed credential in VC-JWT format.
 func HandleVciCredential(w http.ResponseWriter, r *http.Request) {
@@ -182,16 +182,19 @@ func HandleVciCredential(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now().UTC()
 
-	// Example static claims — in a real system these would come from DSNet or your identity source.
-	studentStatus := "active"
-	studentID := "123456"
-	gender := "unspecified"
-	birthdate := "2004-05-10"
+	// --- This is where you define *what* data goes into the VC ---
+	// For demo purposes we hardcode a birthdate; in real life you fetch this
+	// from DSNet / your identity source based on rec.User.Sub.
+	birthdate := "2004-05-10" // YYYY-MM-DD
 
-	age := 21
-	university := "AGH"
+	birthTime, err := time.Parse("2006-01-02", birthdate)
+	if err != nil {
+		http.Error(w, "invalid birthdate", http.StatusInternalServerError)
+		return
+	}
+	birthTS := birthTime.Unix() // <- matches 'birth_ts' integer field in your schema
 
-	// Compose VC-JWT claims.
+	// Compose VC-JWT claims aligned with age_over_18_ts schema (birth_ts as main subject claim).
 	vcClaims := map[string]any{
 		"iss": config.IssuerBaseURL,
 		"sub": rec.User.Sub,
@@ -199,18 +202,12 @@ func HandleVciCredential(w http.ResponseWriter, r *http.Request) {
 		"nbf": now.Unix(),
 		"vc": map[string]any{
 			"@context":     []any{"https://www.w3.org/2018/credentials/v1"},
-			"type":         []string{"VerifiableCredential", "StudentCredential"},
+			"type":         []string{"VerifiableCredential", "AgeOver18Credential"},
 			"issuer":       config.IssuerBaseURL,
 			"issuanceDate": now.Format(time.RFC3339),
 			"credentialSubject": map[string]any{
-				"id":             rec.User.Sub,
-				"student_status": studentStatus,
-				"student_id":     studentID,
-				"gender":         gender,
-				"birthdate":      birthdate,
-
-				"age":        age,
-				"university": university,
+				"id":       rec.User.Sub,
+				"birth_ts": birthTS,
 			},
 		},
 	}
