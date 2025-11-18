@@ -6,29 +6,38 @@ import (
 	"path"
 	"strings"
 	"time"
+
 	"zk-wallet-go/internal/app/config"
+	"zk-wallet-go/internal/app/vcstore"
 	"zk-wallet-go/pkg/util"
-	"zk-wallet-go/pkg/util/timeutil"
 
 	"github.com/lestrrat-go/jwx/v2/jws"
 )
 
-// HandleWalletImportOffer simulates the wallet-side flow of importing and redeeming
-// a credential offer using the OIDC4VCI protocol.
+// WalletHandler – wszystkie endpointy portfela oparte o VCStore.
+type WalletHandler struct {
+	VCs vcstore.VCStore
+}
+
+func NewWalletHandler(store vcstore.VCStore) *WalletHandler {
+	return &WalletHandler{VCs: store}
+}
+
+// HandleWalletImportOffer simuluje stronę walleta w OIDC4VCI.
 //
-// Flow summary:
-// 1. Accept an offer (or deeplink) from the frontend.
-// 2. Resolve deeplink into a standard credential_offer_uri.
-// 3. GET the offer details from the issuer.
-// 4. Exchange the pre-authorized_code for an access_token via /token.
-// 5. Use the access_token to request the credential from /credential.
-// 6. Optionally verify and parse the received VC JWT.
-// 7. Store the credential in local in-memory walletVCs.
-func HandleWalletImportOffer(w http.ResponseWriter, r *http.Request) {
+// Flow:
+// 1. Przyjmuje offer / deeplink.
+// 2. Rozwiązuje deeplink do credential_offer_uri.
+// 3. GET offer z issuer.
+// 4. Wymienia pre-authorized_code na access_token.
+// 5. Pobiera credential z /credential.
+// 6. Opcjonalnie weryfikuje podpis.
+// 7. Zapisuje credential do VCStore.
+func (h *WalletHandler) HandleWalletImportOffer(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Offer string `json:"offer"`
 	}
-	// Parse input JSON.
+
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		http.Error(w, "bad json: "+err.Error(), http.StatusBadRequest)
 		return
@@ -60,6 +69,7 @@ func HandleWalletImportOffer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "offer fetch failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	grant, _ := offer.Grants["urn:ietf:params:oauth:grant-type:pre-authorized_code"].(map[string]any)
 	pre, _ := grant["pre-authorized_code"].(string)
 	if pre == "" {
@@ -87,7 +97,12 @@ func HandleWalletImportOffer(w http.ResponseWriter, r *http.Request) {
 		Format     string `json:"format"`
 		Credential string `json:"credential"` // compact JWS
 	}
-	if err := util.HttpPostAuthJSON(offer.CredentialIssuer+"/oidc4vci/credential", tokRes.AccessToken, map[string]any{}, &credRes); err != nil {
+	if err := util.HttpPostAuthJSON(
+		offer.CredentialIssuer+"/oidc4vci/credential",
+		tokRes.AccessToken,
+		map[string]any{},
+		&credRes,
+	); err != nil {
 		http.Error(w, "credential failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -96,6 +111,7 @@ func HandleWalletImportOffer(w http.ResponseWriter, r *http.Request) {
 	payload, err := jws.Verify([]byte(credRes.Credential), jws.WithKeySet(config.IssuerJWKSet))
 	if err != nil {
 		// For MVP we still store even if signature verification fails.
+		// payload może być nil => parsowanie niżej po prostu da zero-values.
 	}
 
 	// Parse basic payload fields for indexing/display.
@@ -113,24 +129,23 @@ func HandleWalletImportOffer(w http.ResponseWriter, r *http.Request) {
 
 	// Compute hash ID for stored VC.
 	id := util.Sha256hex([]byte(credRes.Credential))
-	display := "Credential"
-	if len(pl.VC.Type) > 0 {
-		display = pl.VC.Type[len(pl.VC.Type)-1]
+
+	// Store credential in VCStore.
+	vc := vcstore.VerifiableCredential{
+		ID:      id,
+		Format:  credRes.Format,
+		Raw:     credRes.Credential,
+		Issuer:  pl.Iss,
+		Subject: pl.Sub,
+		Types:   pl.VC.Type,
+		// możesz tu dać time.Now().UTC() albo time.Now()
+		CreatedAt: time.Now().UTC(),
 	}
 
-	// Store credential in in-memory wallet.
-	config.WalletMu.Lock()
-	config.WalletVCs[id] = config.StoredVC{
-		ID:          id,
-		Format:      credRes.Format,
-		Credential:  credRes.Credential,
-		Issuer:      pl.Iss,
-		Subject:     pl.Sub,
-		Types:       pl.VC.Type,
-		ReceivedAt:  timeutil.TimeUTC{T: time.Now().UTC().Unix()},
-		DisplayName: display,
+	if err := h.VCs.Save(vc); err != nil {
+		http.Error(w, "vcstore save failed: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
-	config.WalletMu.Unlock()
 
 	// Respond with minimal info about stored VC.
 	util.WriteJSON(w, map[string]any{
@@ -142,33 +157,29 @@ func HandleWalletImportOffer(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleWalletList returns all stored credentials (VCs) from the local wallet.
-// Used for debugging / viewing wallet content.
-func HandleWalletList(w http.ResponseWriter, r *http.Request) {
-	config.WalletMu.RLock()
-	out := make([]config.StoredVC, 0, len(config.WalletVCs))
-	for _, v := range config.WalletVCs {
-		out = append(out, v)
+// Uses VCStore.List().
+func (h *WalletHandler) HandleWalletList(w http.ResponseWriter, r *http.Request) {
+	list, err := h.VCs.List()
+	if err != nil {
+		http.Error(w, "vcstore list failed: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
-	config.WalletMu.RUnlock()
-	util.WriteJSON(w, out)
+	util.WriteJSON(w, list)
 }
 
 // HandleWalletShow displays a specific VC by its ID, verifying its signature first.
-// Returns both metadata (from local store) and the decoded payload.
-func HandleWalletShow(w http.ResponseWriter, r *http.Request) {
+// Returns both metadata (from VCStore) and the decoded payload.
+func (h *WalletHandler) HandleWalletShow(w http.ResponseWriter, r *http.Request) {
 	id := path.Base(r.URL.Path)
 
-	// Lookup VC in wallet.
-	config.WalletMu.RLock()
-	v, ok := config.WalletVCs[id]
-	config.WalletMu.RUnlock()
+	vc, ok := h.VCs.Get(id)
 	if !ok {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
 	// Verify signature using local issuer keys.
-	msg, err := jws.Verify([]byte(v.Credential), jws.WithKeySet(config.IssuerJWKSet))
+	msg, err := jws.Verify([]byte(vc.Raw), jws.WithKeySet(config.IssuerJWKSet))
 	if err != nil {
 		http.Error(w, "signature invalid: "+err.Error(), http.StatusBadRequest)
 		return
@@ -177,19 +188,20 @@ func HandleWalletShow(w http.ResponseWriter, r *http.Request) {
 	// Decode verified payload.
 	var payload any
 	_ = json.Unmarshal(msg, &payload)
+
 	util.WriteJSON(w, map[string]any{
-		"meta":    v,
+		"meta":    vc,
 		"payload": payload,
 	})
 }
 
 // HandleWalletVerify allows user to POST a credential and checks its signature validity.
 // Returns {valid:true, payload:<claims>} if verification passes.
-func HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
+func (h *WalletHandler) HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Credential string `json:"credential"`
 	}
-	// Parse input JSON.
+
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		http.Error(w, "bad json: "+err.Error(), http.StatusBadRequest)
 		return
@@ -209,51 +221,9 @@ func HandleWalletVerify(w http.ResponseWriter, r *http.Request) {
 	// Decode claims payload.
 	var payload any
 	_ = json.Unmarshal(msg, &payload)
-	util.WriteJSON(w, map[string]any{"valid": true, "payload": payload})
-}
 
-// HandleWalletClaims extracts and displays claims from a stored VC (without verification).
-// Used for human-readable debugging or simple frontend display.
-//
-// Steps:
-// 1. Retrieve stored VC.
-// 2. Parse JWS (without verifying).
-// 3. Unmarshal payload into map[string]any.
-// 4. Return both stored metadata and full claim set.
-func HandleWalletClaims(w http.ResponseWriter, r *http.Request) {
-	id := path.Base(r.URL.Path)
-
-	// (1) Retrieve stored VC by ID.
-	config.WalletMu.RLock()
-	v, ok := config.WalletVCs[id]
-	config.WalletMu.RUnlock()
-	if !ok {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	// (2) Parse JWS envelope to get payload (without verifying).
-	msg, err := jws.Parse([]byte(v.Credential))
-	if err != nil {
-		http.Error(w, "jws parse error: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// (3) Unmarshal payload into generic claims map.
-	var claims map[string]any
-	if err := json.Unmarshal(msg.Payload(), &claims); err != nil {
-		http.Error(w, "payload json error: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// (4) Return structured response containing metadata and claims.
 	util.WriteJSON(w, map[string]any{
-		"id":           v.ID,
-		"format":       v.Format,
-		"display_name": v.DisplayName,
-		"issuer_meta":  v.Issuer,  // from stored metadata
-		"subject_meta": v.Subject, // from stored metadata
-		"types_meta":   v.Types,   // from stored metadata
-		"claims":       claims,    // decoded credential claims
+		"valid":   true,
+		"payload": payload,
 	})
 }

@@ -15,7 +15,7 @@ func sha256Hex(b []byte) string {
 	return fmt.Sprintf("%x", h[:])
 }
 
-// ensureVKForSchema – teraz tak naprawdę zapewnia PK+VK.
+// ensureVKForSchema
 func (s *Service) ensureVKForSchema(canon string) (string, error) {
 	hash := "sha256:" + sha256Hex([]byte(canon))
 

@@ -46,12 +46,11 @@
 <body>
 
 <h1>Minimal Mock Wallet</h1>
-<p>Wklej <code>request_id</code> i <strong>datę urodzenia</strong>, a strona wyśle:</br>
+<p>Wklej <code>request_id</code>, a strona wyśle:</br>
     <code>POST /wallet/zkp/create</code>
 </p>
 
 <input id="reqInput" type="text" placeholder="request_id">
-<input id="dobInput" type="date" placeholder="birthdate">
 
 <button id="runBtn">Verify</button>
 
@@ -70,20 +69,14 @@
 
     async function run() {
         const reqId = document.getElementById("reqInput").value.trim();
-        const dobStr = document.getElementById("dobInput").value.trim();
 
         if (!reqId) {
             setStatus("Provide request_id.", "error");
             return;
         }
 
-        if (!dobStr) {
-            setStatus("Provide birthdate.", "error");
-            return;
-        }
 
         // YYYY-MM-DD → timestamp (UTC, sekundy)
-        const dobTs = Math.floor(new Date(dobStr + "T00:00:00Z").getTime() / 1000);
 
         setStatus("Calling /wallet/zkp/create...", "pending");
         verifyBox.textContent = "";
@@ -94,9 +87,6 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     request_id: reqId,
-                    inputs: {
-                        birth_ts: dobTs   // <-- NAZWA DOPASOWANA DO SCHEMY
-                    }
                 })
             });
 
