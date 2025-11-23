@@ -4,9 +4,11 @@ go 1.24.5
 
 require (
 	github.com/consensys/gnark v0.13.0
-	github.com/consensys/gnark-crypto v0.18.0
+	github.com/consensys/gnark-crypto v0.18.1
 	github.com/gagliardetto/solana-go v1.13.0
 	github.com/gin-gonic/gin v1.10.1
+	github.com/google/uuid v1.6.0
+	github.com/near/borsh-go v0.3.1
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/swaggo/swag v1.16.6
 )
@@ -37,7 +39,6 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/pprof v0.0.0-20250607225305-033d6d78b36a // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/ingonyama-zk/icicle-gnark/v3 v3.2.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
