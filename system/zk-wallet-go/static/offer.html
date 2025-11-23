@@ -29,7 +29,7 @@
       const img = document.createElement('img');
       img.id = 'qr-img';
       img.alt = 'QR';
-      img.src = `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${deeplink}`;
+      img.src = `https://quickchart.io/qr?text=${deeplink}&size=300`;
       const link = document.createElement('p');
       link.innerHTML = '<b>Deeplink:</b> <code>'+data.deeplink+'</code>';
       const cont = $('#qr');

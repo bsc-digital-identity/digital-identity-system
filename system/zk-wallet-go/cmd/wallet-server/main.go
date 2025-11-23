@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -20,11 +23,18 @@ import (
 )
 
 func main() {
-	// Wczytanie .env (dla uruchamiania lokalnie)
 	_ = godotenv.Load()
-
-	// --- Environment configuration ---
-	config.IssuerBaseURL = config.MustEnv("ISSUER_BASE_URL")
+	rawIssuer := strings.TrimRight(config.MustEnv("ISSUER_BASE_URL"), "/")
+	issuerURL, err := url.Parse(rawIssuer)
+	if err != nil || issuerURL.Scheme == "" || issuerURL.Host == "" {
+		log.Fatalf("invalid ISSUER_BASE_URL: %s", rawIssuer)
+	}
+	port := issuerURL.Port()
+	if port == "" {
+		port = "80"
+	}
+	issuerURL.Host = net.JoinHostPort(issuerURL.Hostname(), port)
+	config.IssuerBaseURL = issuerURL.String()
 	config.DsnetIssuer = config.MustEnv("DSNET_ISSUER")
 	config.OidcClientID = config.MustEnv("OIDC_CLIENT_ID")
 	config.OidcClientSecret = config.MustEnv("OIDC_CLIENT_SECRET")
@@ -34,10 +44,7 @@ func main() {
 	)
 	config.ZkpVerifierBaseURL = config.MustEnv("ZKP_VERIFIER_BASE_URL")
 
-	port := config.MustEnv("PORT")
-
 	// --- OIDC discovery (DSNet jako OP) ---
-	var err error
 	config.OidcProvider, err = oidc.NewProvider(
 		context.Background(),
 		config.DsnetIssuer,
