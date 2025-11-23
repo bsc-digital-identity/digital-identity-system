@@ -94,6 +94,32 @@ jobs:
     #   working-directory: ./src/system/pkg/test
     #   run: go test -v
 
+  test_all_modules:
+    name: Run full test suite via test_runner
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo 
+      uses: actions/checkout@v4
+      with: 
+        path: 'src'
+        fetch-depth: 1
+        sparse-checkout: |
+            system/
+            dev_tools/
+        sparse-checkout-cone-mode: false
+
+    - name: Setup go environment 
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24.5'
+
+    - name: Check go version 
+      run: go version
+
+    - name: Run all tests using test_runner.sh
+      working-directory: ./src
+      run: bash dev_tools/scripts/test_runner.sh test
+
 #  sonarqube:
 #    name: SonarQube
 #    runs-on: ubuntu-latest
