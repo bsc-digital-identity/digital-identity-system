@@ -1,5 +1,6 @@
 *.exe
 .env
+.env.tmp
 .idea/
 system/blockchain-client/.gocache/
 system/blockchain-client/test-ledger/
