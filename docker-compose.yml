@@ -26,6 +26,7 @@ services:
     environment:
       - DB_CONNECTION_STRING=host=postgres user=api_user password=api_password dbname=digital_identity port=5432 sslmode=disable
       - ENV_TYPE=dev
+      - LAN_HOST_IP=${LAN_HOST_IP}
     ports:
       - "8080:8080"
     depends_on:
@@ -62,7 +63,8 @@ services:
     environment:
       - PROGRAM_ID=${PROGRAM_ID}
       - PAYER_KEYPAIR_PATH=/app/id.json
-      - SOLANA_URL=http://host.docker.internal:8899
+      - SOLANA_URL=http://${LAN_HOST_IP}:8899
+      - LAN_HOST_IP=${LAN_HOST_IP}
     volumes:
       - type: bind
         source: ${KEYPAIR_PATH}

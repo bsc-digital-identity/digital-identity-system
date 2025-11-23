@@ -3,11 +3,13 @@ package main
 import (
 	"blockchain-client/src/external"
 	"blockchain-client/src/workers"
+	"fmt"
 	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
 	"pkg-common/rest"
+	"pkg-common/utilities"
 
-	_ "blockchain-client/src/docs"
+	"blockchain-client/src/docs"
 )
 
 // @title           Digital Identity System - Blockchain Client
@@ -16,6 +18,9 @@ import (
 // @host localhost:9000
 // @BasePath /bc/v1
 func main() {
+	lanHost := utilities.ResolveLanHost()
+	docs.SwaggerInfo.Host = fmt.Sprintf("%s:9000", lanHost)
+
 	appbuilder.New[BlockchainClientConfigJson]().
 		InitLogger(logger.GlobalLoggerConfig{}).
 		ResolveEnvironment().

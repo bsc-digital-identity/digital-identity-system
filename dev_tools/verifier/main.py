@@ -1,6 +1,9 @@
-import pika
 import json
 import uuid
+import os
+import sys
+
+import pika
 
 message = {
     "event_id": str(uuid.uuid4()),
@@ -11,10 +14,17 @@ message = {
     "schema": "12324235525474364465786756"
 }
 
+def resolve_lan_host() -> str:
+    lan_host = os.environ.get("LAN_HOST_IP")
+    if not lan_host:
+        sys.exit("LAN_HOST_IP environment variable is required")
+    return lan_host
+
+
 credentials = pika.PlainCredentials('verifier_mock', 'verifier_mock')
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(
-        host='192.168.8.107',
+        host=resolve_lan_host(),
         port=5672,
         credentials=credentials
     )

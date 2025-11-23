@@ -109,3 +109,11 @@ Example response:
   "subject_meta": "",
   "types_meta": null
 }
+```
+
+```bash
+go run cmd/wallet-server/main.go
+# localhost:8087 -> login, create offer
+curl -i -X POST "http://localhost:8087/wallet/ingest" -H "Content-Type: application/json" -d "{\"offer\":\"http://localhost:8087/oidc4vci/offer/<id>\"}"
+curl "http://localhost:8087/wallet/vcs-pretty/<vc_id>"
+```

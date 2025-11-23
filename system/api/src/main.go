@@ -2,16 +2,18 @@ package main
 
 import (
 	"api/src/database"
-	_ "api/src/docs"
+	"api/src/docs"
 	"api/src/identity"
 	"api/src/middleware"
 	"api/src/outbox"
 	zkpfailed "api/src/zkp/failed"
 	zkpresult "api/src/zkp/results"
 	"api/src/zkprequest"
+	"fmt"
 	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
 	"pkg-common/rest"
+	"pkg-common/utilities"
 	"time"
 )
 
@@ -23,6 +25,10 @@ import (
 func main() {
 
 	var zkpHandler *zkprequest.Handler
+
+	lanHost := utilities.ResolveLanHost()
+	apiBaseURL := fmt.Sprintf("http://%s:9000", lanHost)
+	docs.SwaggerInfo.Host = fmt.Sprintf("%s:9000", lanHost)
 
 	appbuilder.New[ApiConfigJson, ApiConfig]().
 		InitLogger(logger.GlobalLoggerConfig{}).
@@ -38,12 +44,10 @@ func main() {
 			svc := zkprequest.NewService(
 				&zkprequest.InMemoryStore{},
 				func(s *zkprequest.Service) {
-					// Correct URL - NO double http://
-					s.Audience = "http://192.168.8.107:9000"
+					s.Audience = apiBaseURL
 				},
 				func(s *zkprequest.Service) {
-					// Correct URL - NO double http://
-					s.ResponseURI = "http://192.168.8.107:9000/v1/presentations/verify"
+					s.ResponseURI = apiBaseURL + "/v1/presentations/verify"
 				},
 				func(s *zkprequest.Service) {
 					s.TTL = 5 * time.Minute

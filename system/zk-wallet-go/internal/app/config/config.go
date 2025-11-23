@@ -21,7 +21,7 @@ import (
 // (PoC) — in production, these values would be stored securely and persisted in a DB.
 var (
 	// Public origin of this issuer server (used for metadata, redirect URI, etc.)
-	IssuerBaseURL = "http://http://192.168.8.107:8080"
+	IssuerBaseURL string
 
 	// URL of the external OIDC provider (e.g., DSNet / AGH SSO)
 	DsnetIssuer string

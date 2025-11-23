@@ -4,6 +4,34 @@ set -euo pipefail
 # ---------- helpers ----------
 log() { printf 'MESSAGE: %s\n' "$*"; }
 
+detect_lan_host_ip() {
+  if [[ -n "${LAN_HOST_IP:-}" ]]; then
+    echo "${LAN_HOST_IP}"
+    return 0
+  fi
+
+  # Prefer IP from default route lookup
+  if command -v ip >/dev/null 2>&1; then
+    if route_ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}'); [[ -n "${route_ip}" ]]; then
+      echo "${route_ip}"
+      return 0
+    fi
+  fi
+
+  # Fallback to first non-loopback address from hostname -I
+  if command -v hostname >/dev/null 2>&1; then
+    if host_ip=$(hostname -I 2>/dev/null | awk '{print $1}'); [[ -n "${host_ip}" && "${host_ip}" != "127.0.0.1" ]]; then
+      echo "${host_ip}"
+      return 0
+    fi
+  fi
+
+  echo "127.0.0.1"
+}
+
+LAN_HOST_IP_VALUE="$(detect_lan_host_ip)"
+log "Using LAN_HOST_IP=${LAN_HOST_IP_VALUE}"
+
 # Prefer v2 `docker compose` if available, else fall back to v1 `docker-compose`
 if command -v docker &>/dev/null && docker compose version &>/dev/null; then
   DCMD=(docker compose)
@@ -50,7 +78,7 @@ trap cleanup INT TERM
 command -v solana >/dev/null || { echo "ERROR: 'solana' CLI not found in PATH." >&2; exit 1; }
 
 # Use local RPC for all solana CLI calls
-SOLANA_URL="http://127.0.0.1:8899"
+SOLANA_URL="http://${LAN_HOST_IP_VALUE}:8899"
 
 # ---------- start local validator ----------
 log "Starting solana-test-validator..."
@@ -111,7 +139,8 @@ if ! (grep -q '^KEYPAIR_PATH=' "${ENV_TMP}" && grep -q '^PROGRAM_ID=' "${ENV_TMP
   exit 1
 fi
 mv -f "${ENV_TMP}" .env
-log "Wrote .env with KEYPAIR_PATH and PROGRAM_ID"
+printf 'LAN_HOST_IP=%s\nSOLANA_URL=http://%s:8899\n' "${LAN_HOST_IP_VALUE}" "${LAN_HOST_IP_VALUE}" >> .env
+log "Wrote .env with KEYPAIR_PATH, PROGRAM_ID, LAN_HOST_IP=${LAN_HOST_IP_VALUE}, SOLANA_URL=http://${LAN_HOST_IP_VALUE}:8899"
 
 # ---------- fund local wallet ----------
 mkdir -p ./system/blockchain-client
@@ -145,4 +174,3 @@ log "setup ready, starting docker"
 
 # If compose exits normally (containers stop), clean up the validator as well.
 cleanup
-
