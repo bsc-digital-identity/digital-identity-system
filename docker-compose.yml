@@ -76,14 +76,20 @@ services:
       - default
 
   rabbitmq:
-      build:
-        context: ./system/rabbitmq
-      container_name: identity-rabbitmq
-      volumes:
-        - ./system/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-      expose:
-        - "5672"
-        - "15672"
+    build:
+      context: ./system/rabbitmq
+    container_name: identity-rabbitmq
+    environment:
+      - RABBITMQ_NODENAME=rabbit@identity-rabbitmq
+    volumes:
+      - ./system/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    expose:
+      - "5672"
+      - "15672"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 networks:
   db_net:
     driver: bridge

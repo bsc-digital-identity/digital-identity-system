@@ -1,0 +1,3 @@
+# Lockfile for Dependabot security updates. Keep in sync with uv.lock.
+# Regenerate with: uv export --format requirements --no-hashes > requirements.txt
+pika==1.3.2

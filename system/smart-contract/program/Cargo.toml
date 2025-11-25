@@ -14,10 +14,13 @@ edition = "2018"
 # helper functions from this library without causing symbol conflicts
 # with our entrypoint.
 exclude_entrypoint = []
+# These are injected by the Solana SDK tooling; defining them silences cfg warnings.
+custom-heap = []
+custom-panic = []
 
 [dependencies]
 solana-program = "1"
-borsh = "0.9.1"
+borsh = { version = "1.6.0", features = ["derive"] }
 
 [lib]
 name = "identity_app"

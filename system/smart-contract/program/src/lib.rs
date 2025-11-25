@@ -18,7 +18,7 @@ pub struct ZkpResult {
 entrypoint!(process_instruction);
 
 pub fn process_instruction(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> entrypoint::ProgramResult {
@@ -39,9 +39,9 @@ pub fn process_instruction(
 
     // Serialize to account data
     let mut account_data = account.data.borrow_mut();
-    
+
     // Check if account has enough space
-    let serialized_size = zkp_result.try_to_vec()?.len();
+    let serialized_size = borsh::to_vec(&zkp_result)?.len();
     if account_data.len() < serialized_size {
         msg!("Account data size: {}, required size: {}", account_data.len(), serialized_size);
         return Err(ProgramError::AccountDataTooSmall);
