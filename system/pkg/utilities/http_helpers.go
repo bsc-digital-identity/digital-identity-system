@@ -6,7 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 	"pkg-common/zkpconfig"
 )
 
@@ -20,14 +23,19 @@ func Sha256hex(b []byte) string {
 // HttpGetJSON issues a simple HTTP GET and decodes a JSON response into out.
 // It treats any non-2xx status as an error (returned as httpStatusErr).
 func HttpGetJSON[T any](u string, out *T) error {
-	resp, err := http.Get(u)
+	validatedURL, err := validateHTTPURL(u)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Get(validatedURL)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode/100 != 2 {
-		return &httpStatusErr{URL: u, Code: resp.StatusCode}
+		return &httpStatusErr{URL: validatedURL, Code: resp.StatusCode}
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }
@@ -35,15 +43,20 @@ func HttpGetJSON[T any](u string, out *T) error {
 // HttpPostJSON sends a JSON-encoded POST body and decodes a JSON response into out.
 // It treats any non-2xx status as an error (returned as httpStatusErr).
 func HttpPostJSON[T any](u string, body any, out *T) error {
+	validatedURL, err := validateHTTPURL(u)
+	if err != nil {
+		return err
+	}
+
 	b, _ := json.Marshal(body)
-	resp, err := http.Post(u, "application/json", bytes.NewReader(b))
+	resp, err := http.Post(validatedURL, "application/json", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode/100 != 2 {
-		return &httpStatusErr{URL: u, Code: resp.StatusCode}
+		return &httpStatusErr{URL: validatedURL, Code: resp.StatusCode}
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }
@@ -51,9 +64,14 @@ func HttpPostJSON[T any](u string, body any, out *T) error {
 // HttpPostAuthJSON is like httpPostJSON but adds a Bearer Authorization header.
 // Useful for calling protected APIs with an access token.
 func HttpPostAuthJSON[T any](u, accessToken string, body any, out *T) error {
+	validatedURL, err := validateHTTPURL(u)
+	if err != nil {
+		return err
+	}
+
 	b, _ := json.Marshal(body)
 
-	req, _ := http.NewRequest("POST", u, bytes.NewReader(b))
+	req, _ := http.NewRequest("POST", validatedURL, bytes.NewReader(b))
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -76,6 +94,21 @@ type httpStatusErr struct {
 }
 
 func (e *httpStatusErr) Error() string { return "HTTP " + http.StatusText(e.Code) + " for " + e.URL }
+
+// validateHTTPURL ensures the input is an absolute http(s) URL to prevent SSRF-style misuse.
+func validateHTTPURL(raw string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", err
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", fmt.Errorf("unsupported URL scheme %q", u.Scheme)
+	}
+	if u.Host == "" {
+		return "", errors.New("missing host in URL")
+	}
+	return u.String(), nil
+}
 
 // WriteJSON writes v as pretty-printed JSON with the correct Content-Type header.
 // Errors from Encode are ignored on purpose (best-effort response).
