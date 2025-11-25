@@ -2,84 +2,61 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Mock Wallet - Minimal</title>
+    <title>Proof | zk-wallet-go</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-            sans-serif;
-            max-width: 800px;
-            margin: 24px auto;
-            padding: 0 16px;
-            line-height: 1.5;
-        }
-        input[type="text"], input[type="date"] {
-            width: 100%;
-            padding: 8px 10px;
-            margin-bottom: 12px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            font-size: 1rem;
-        }
-        button {
-            padding: 10px 16px;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
-            background: #111827;
-            color: white;
-            font-size: 1rem;
-        }
-        pre {
-            background: #f3f4f6;
-            padding: 12px;
-            border-radius: 6px;
-            margin-top: 16px;
-            white-space: pre-wrap;
-        }
-        .status { margin-top: 10px; font-size: 1rem; }
-        .ok { color: #059669; }
-        .error { color: #dc2626; }
-        .pending { color: #d97706; }
-    </style>
+    <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
 
-<h1>Minimal Mock Wallet</h1>
-<p>Wklej <code>request_id</code>, a strona wyśle:</br>
-    <code>POST /wallet/zkp/create</code>
-</p>
-
-<input id="reqInput" type="text" placeholder="request_id">
-
-<button id="runBtn">Verify</button>
-
-<div id="status" class="status"></div>
-
-<pre id="verifyBox"></pre>
+<div class="shell">
+  <header>
+    <div class="row nav">
+      <h1>Zero-Knowledge Proof</h1>
+      <div class="nav-right">
+        <a class="btn secondary" href="/">Home</a>
+        <a class="btn secondary" href="/offer.html">Offer</a>
+        <a class="btn secondary" href="/wallet.html">Wallet</a>
+        <a class="btn secondary" href="/proof.html">Proof</a>
+        <a class="btn" id="loginBtn" href="/auth/dsnet/login">Login</a>
+        <a class="btn secondary" id="logoutBtn" href="/auth/logout" style="display:none;">Logout</a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="card">
+      <h2>ZKP request</h2>
+      <div style="height:8px;"></div>
+      <input id="reqInput" type="text" placeholder="request_id" autocomplete="off">
+      <div class="row btn-row">
+        <button class="btn" id="runBtn">Submit proof</button>
+      </div>
+    </div>
+    <pre id="verifyBox" style="margin-top:12px; display:none;">No response yet.</pre>
+  </main>
+</div>
 
 <script>
-    const statusEl = document.getElementById("status");
     const verifyBox = document.getElementById("verifyBox");
+    const input = document.getElementById("reqInput");
+    const runBtn = document.getElementById("runBtn");
 
-    function setStatus(msg, cls) {
-        statusEl.textContent = msg;
-        statusEl.className = "status " + (cls || "");
+    function setStatus(msg) {
+        verifyBox.style.display = 'block';
+        verifyBox.className = '';
+        verifyBox.textContent = msg;
     }
 
     async function run() {
         const reqId = document.getElementById("reqInput").value.trim();
 
         if (!reqId) {
-            setStatus("Provide request_id.", "error");
+            setStatus("Provide request_id.");
             return;
         }
 
-
-        // YYYY-MM-DD → timestamp (UTC, sekundy)
-
-        setStatus("Calling /wallet/zkp/create...", "pending");
-        verifyBox.textContent = "";
+        verifyBox.style.display = 'block';
+        verifyBox.className = '';
+        verifyBox.textContent = "Processing...";
 
         try {
             const resp = await fetch("/wallet/zkp/create", {
@@ -98,15 +75,44 @@
                 verifyBox.textContent = text;
             }
 
-            if (resp.ok) setStatus("Done.", "ok");
-            else setStatus("Verify failed: " + resp.status, "error");
-
         } catch (err) {
-            setStatus("Fetch error: " + err, "error");
+            setStatus("Network error: " + err);
+            verifyBox.style.display = 'block';
         }
     }
 
     document.getElementById("runBtn").addEventListener("click", run);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+
+    async function refreshSessionUI() {
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        try {
+            const res = await fetch('/auth/me', { credentials:'include' });
+            if (res.ok) {
+                const u = await res.json();
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'inline';
+            } else {
+                loginBtn.style.display = 'inline';
+                logoutBtn.style.display = 'none';
+            }
+        } catch {
+            loginBtn.style.display = 'inline';
+            logoutBtn.style.display = 'none';
+        }
+    }
+    refreshSessionUI();
+
+    // Prefill from URL params, optional autorun
+    const params = new URLSearchParams(window.location.search);
+    const initial = params.get('request_id');
+    if (initial) {
+        input.value = initial;
+    }
+    if (initial && params.get('autorun')) {
+        run();
+    }
 </script>
 
 </body>

@@ -41,6 +41,11 @@ type IngestResponse struct {
 // optionally redeems the offer (token → credential), verifies the VC (best-effort),
 // stores it in VCStore (if requested), and returns a normalized response with metadata.
 func (h *WalletHandler) HandleWalletIngest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	var in IngestRequest
 	// Parse incoming JSON request.
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {

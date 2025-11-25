@@ -28,7 +28,7 @@ It acts as both a local **issuer** and a simple **wallet MVP**, allowing users t
 - Set `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` in `.env`
 - `go run cmd/wallet-server/main.go`
 - Open `http://localhost:8087/` in browser and login via DSNET
-- Open `http://localhost:8087/offer.html` and generate a credential offer
-- `curl -i -X POST 'http://localhost:8087/wallet/ingest' -H 'Content-Type: application/json' -d '{"offer":"http://localhost:8087/oidc4vci/offer/<id>"}'`
+- Go to `http://localhost:8087/offer.html` – create credential offer, see QR/deeplink, and the page will auto-import the VC into the local wallet (no manual curl)
+- Check saved credentials at `http://localhost:8087/wallet.html` (list, ingest manually from offer/deeplink or from compact JWS)
 - Open `http://localhost:8087/proof.html` and paste request ID from app
 - Return to the app

@@ -179,10 +179,14 @@ func (h *WalletHandler) HandleWalletShow(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Verify signature using local issuer keys.
+	valid := true
 	msg, err := jws.Verify([]byte(vc.Raw), jws.WithKeySet(config.IssuerJWKSet))
 	if err != nil {
-		http.Error(w, "signature invalid: "+err.Error(), http.StatusBadRequest)
-		return
+		valid = false
+		// Best-effort parse without verification.
+		if obj, perr := jws.Parse([]byte(vc.Raw)); perr == nil {
+			msg = obj.Payload()
+		}
 	}
 
 	// Decode verified payload.
@@ -192,6 +196,7 @@ func (h *WalletHandler) HandleWalletShow(w http.ResponseWriter, r *http.Request)
 	util.WriteJSON(w, map[string]any{
 		"meta":    vc,
 		"payload": payload,
+		"valid":   valid,
 	})
 }
 
@@ -212,10 +217,13 @@ func (h *WalletHandler) HandleWalletVerify(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Verify the credential signature using issuer keys.
+	valid := true
 	msg, err := jws.Verify([]byte(in.Credential), jws.WithKeySet(config.IssuerJWKSet))
 	if err != nil {
-		http.Error(w, "invalid signature: "+err.Error(), http.StatusBadRequest)
-		return
+		valid = false
+		if obj, perr := jws.Parse([]byte(in.Credential)); perr == nil {
+			msg = obj.Payload()
+		}
 	}
 
 	// Decode claims payload.
@@ -223,7 +231,15 @@ func (h *WalletHandler) HandleWalletVerify(w http.ResponseWriter, r *http.Reques
 	_ = json.Unmarshal(msg, &payload)
 
 	util.WriteJSON(w, map[string]any{
-		"valid":   true,
+		"valid":   valid,
 		"payload": payload,
+		"error":   errorString(err),
 	})
+}
+
+func errorString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
