@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Wallet | zk-wallet-go</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="row nav">
+        <h1>Wallet</h1>
+        <div class="nav-right">
+          <a class="btn secondary" href="/">Home</a>
+          <a class="btn secondary" href="/offer.html">Offer</a>
+          <a class="btn secondary" href="/wallet.html">Wallet</a>
+          <a class="btn secondary" href="/proof.html">Proof</a>
+          <a class="btn" id="loginBtn" href="/auth/dsnet/login">Login</a>
+          <a class="btn secondary" id="logoutBtn" href="/auth/logout" style="display:none;">Logout</a>
+        </div>
+      </div>
+    </header>
+    <main>
+      <div class="grid">
+        <div class="card">
+          <h2>Add offer / deeplink</h2>
+          <div style="height:8px;"></div>
+          <textarea id="offerInput" placeholder="openid-credential-offer://?..."></textarea>
+          <div class="row" style="margin-top:8px;">
+            <button class="btn" id="importOffer">Import</button>
+          </div>
+          <div id="offerResult"></div>
+        </div>
+      </div>
+
+      <div class="card" id="listSection">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <div>
+            <h2>Your credentials</h2>
+          </div>
+        </div>
+        <div id="list" class="list"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    const listBox = document.getElementById('list');
+    const refreshBtn = document.getElementById('refresh');
+    const offerBtn = document.getElementById('importOffer');
+    const offerInput = document.getElementById('offerInput');
+    const offerResult = document.getElementById('offerResult');
+
+    const pre = (data) => '<pre>'+JSON.stringify(data,null,2)+'</pre>';
+
+    function renderList(items) {
+      const section = document.getElementById('listSection');
+      if (!items || items.length === 0) {
+        if (section) section.style.display = 'none';
+        return;
+      }
+      if (section) section.style.display = 'block';
+      listBox.innerHTML = items.map(it => `
+        <div class="item">
+          <h3>${it.id}</h3>
+          ${it.types?.map(t=>`<span class="pill">${t}</span>`).join('') || ''}
+        </div>
+      `).join('');
+    }
+
+    async function loadList() {
+      listBox.innerHTML = '<div class="status">Ladowanie...</div>';
+      try {
+        const res = await fetch('/wallet/vcs');
+        const data = await res.json();
+        renderList(data || []);
+      } catch (err) {
+        listBox.innerHTML = '<div class="status error">Nie moge pobrac listy: '+err+'</div>';
+      }
+    }
+
+    function normalizeOfferInput(val) {
+      const trimmed = val.trim();
+      if (!trimmed) return '';
+      // If it's already a URL or deeplink, return as is.
+      if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('openid-credential-offer://')) {
+        return trimmed;
+      }
+      // Otherwise treat it as an ID/code and prepend local origin.
+      return `${window.location.origin}/oidc4vci/offer/${trimmed}`;
+    }
+
+    async function ingest(payload, box) {
+      box.innerHTML = '<pre>Processing...</pre>';
+      try {
+        const res = await fetch('/wallet/ingest', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload),
+        });
+        const txt = await res.text();
+        let parsed = txt;
+        try { parsed = JSON.parse(txt); } catch {}
+        if (res.ok) {
+          box.innerHTML = pre(parsed);
+          loadList();
+        } else {
+          box.innerHTML = '<pre>Error ('+res.status+'):\n'+txt+'</pre>';
+        }
+      } catch (err) {
+        box.innerHTML = '<pre>Error: '+err+'</pre>';
+      }
+    }
+
+    offerBtn.onclick = () => {
+      const val = offerInput.value.trim();
+      if (!val) {
+        return;
+      }
+      ingest({ offer: normalizeOfferInput(val) }, offerResult);
+    };
+    async function refreshSessionUI() {
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      try {
+        const res = await fetch('/auth/me', { credentials:'include' });
+        if (res.ok) {
+          const u = await res.json();
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = 'inline-flex';
+        } else {
+          loginBtn.style.display = 'inline-flex';
+          logoutBtn.style.display = 'none';
+        }
+      } catch {
+        loginBtn.style.display = 'inline-flex';
+        logoutBtn.style.display = 'none';
+      }
+    }
+
+    loadList();
+    refreshSessionUI();
+  </script>
+</body>
+</html>

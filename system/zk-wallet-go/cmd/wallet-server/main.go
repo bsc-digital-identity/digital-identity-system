@@ -36,6 +36,7 @@ func main() {
 	issuerURL.Host = net.JoinHostPort(issuerURL.Hostname(), port)
 	config.IssuerBaseURL = issuerURL.String()
 	config.DsnetIssuer = config.MustEnv("DSNET_ISSUER")
+	config.DsnetLogout = strings.TrimRight(config.DsnetIssuer, "/") + "/logout"
 	config.OidcClientID = config.MustEnv("OIDC_CLIENT_ID")
 	config.OidcClientSecret = config.MustEnv("OIDC_CLIENT_SECRET")
 	config.RedirectURI = config.GetenvDefault(
@@ -56,6 +57,13 @@ func main() {
 	config.Verifier = config.OidcProvider.Verifier(&oidc.Config{
 		ClientID: config.OidcClientID,
 	})
+
+	// Try to extract end_session_endpoint for RP-initiated logout (best-effort).
+	var meta struct {
+		EndSessionEndpoint string `json:"end_session_endpoint"`
+	}
+	_ = config.OidcProvider.Claims(&meta)
+	config.EndSessionEndpoint = meta.EndSessionEndpoint
 
 	config.Oauth2Config = &oauth2.Config{
 		ClientID:     config.OidcClientID,
@@ -96,6 +104,7 @@ func main() {
 	mux.HandleFunc("/auth/dsnet/login", handlers.HandleLogin)
 	mux.HandleFunc("/auth/dsnet/callback", handlers.HandleCallback)
 	mux.HandleFunc("/auth/logout", handlers.HandleLogout)
+	mux.HandleFunc("/auth/me", handlers.HandleMe)
 
 	// --- OIDC4VCI issuer metadata & JWKS ---
 	mux.HandleFunc("/.well-known/openid-credential-issuer", oidcissuer.HandleCredentialIssuerMetadata)

@@ -238,7 +238,7 @@ func (h *ZkpHandler) HandleZkpCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[zkp] vcstore has %d credentials", len(vcList))
 	if len(vcList) == 0 {
-		http.Error(w, "no credentials in wallet", http.StatusBadRequest)
+		http.Error(w, "no credentials in wallet – import a VC first", http.StatusBadRequest)
 		return
 	}
 

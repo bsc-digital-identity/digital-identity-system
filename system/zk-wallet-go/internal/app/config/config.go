@@ -25,6 +25,7 @@ var (
 
 	// URL of the external OIDC provider (e.g., DSNet / AGH SSO)
 	DsnetIssuer string
+	DsnetLogout string
 
 	ZkpVerifierBaseURL string
 
@@ -37,9 +38,10 @@ var (
 	RedirectURI string
 
 	// OIDC & OAuth2 configuration (populated in setupOIDC)
-	Oauth2Config *oauth2.Config
-	OidcProvider *oidc.Provider
-	Verifier     *oidc.IDTokenVerifier // verifies ID tokens from provider
+	Oauth2Config       *oauth2.Config
+	OidcProvider       *oidc.Provider
+	Verifier           *oidc.IDTokenVerifier // verifies ID tokens from provider
+	EndSessionEndpoint string                // optional OP logout endpoint
 
 	// Keys used by this local issuer (for signing/verifying JWT VCs)
 	IssuerJWKSet  jwk.Set
@@ -49,6 +51,12 @@ var (
 	// Cookie names used across authentication flow
 	CookieNameSession = "sid"
 	CookieNamePKCE    = "pkce_verifier"
+	CookieNameState   = "oidc_state"
+	CookieNameNonce   = "oidc_nonce"
+
+	// In-memory PKCE storage keyed by state (used if pkce cookie is blocked).
+	PKCEStore = map[string]string{}
+	PKCEMu    sync.RWMutex
 )
 
 // ---------------------------------------------------------------

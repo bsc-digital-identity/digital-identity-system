@@ -2,20 +2,80 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Home - DSNET → Offer</title>
+  <title>Home | zk-wallet-go</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    body{font-family:system-ui, sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem}
-    a.button, button{display:inline-block;padding:.6rem 1rem;margin:.25rem 0;border:1px solid #ccc;border-radius:8px;background:#fafafa;cursor:pointer}
-    pre{background:#f6f6f6;padding:1rem;white-space:pre-wrap}
-  </style>
+  <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
-  <h1>Minimal Issuer (DSNET → OIDC4VCI)</h1>
-  <p>1) <a class="button" href="/auth/dsnet/login">Zaloguj przez DSNET</a></p>
-  <p>2) Po zalogowaniu wejdź na <a class="button" href="/offer.html">/offer.html</a> aby wygenerować ofertę (QR dla Dock Wallet)</p>
-  <p>3) Potwierdź request na <a class="button" href="/proof.html">/proof.html</a></p>
-  <hr/>
-  <p><a href="/.well-known/openid-credential-issuer" target="_blank">Sprawdź issuer metadata</a></p>
+  <div class="shell">
+    <header>
+      <div class="row nav">
+        <div style="display:none;"></div>
+        <div class="nav-right">
+          <a class="btn secondary" href="/">Home</a>
+          <a class="btn secondary" href="/offer.html">Offer</a>
+          <a class="btn secondary" href="/wallet.html">Wallet</a>
+          <a class="btn secondary" href="/proof.html">Proof</a>
+          <a class="btn" id="loginBtn" href="/auth/dsnet/login">Login</a>
+          <a class="btn secondary" id="logoutBtn" href="/auth/logout" style="display:none;">Logout</a>
+        </div>
+      </div>
+    </header>
+    <main>
+      <div class="card">
+        <div class="steps">
+          <div class="step">
+            <div class="badge">1</div>
+            <div>
+              <strong>Login via DSNET</strong>
+              <p>Sign in via DSNET to issue offers and keep them in the local wallet.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="badge">2</div>
+            <div>
+              <strong>Generate credential offer</strong>
+              <p>Create an offer and QR, copy the deeplink or scan it in a mobile wallet.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="badge">3</div>
+            <div>
+              <strong>Store in wallet</strong>
+              <p>Import the offer/deeplink or ID in Wallet to add the VC locally.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="badge">4</div>
+            <div>
+              <strong>Build ZK proof</strong>
+              <p>Use stored VCs to answer the ZKP request.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <script type="module">
+    async function refreshSessionUI() {
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      try {
+        const res = await fetch('/auth/me', { credentials:'include' });
+        if (res.ok) {
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = 'inline-flex';
+        } else {
+          loginBtn.style.display = 'inline-flex';
+          logoutBtn.style.display = 'none';
+        }
+      } catch {
+        loginBtn.style.display = 'inline-flex';
+        logoutBtn.style.display = 'none';
+      }
+    }
+    refreshSessionUI();
+  </script>
 </body>
 </html>

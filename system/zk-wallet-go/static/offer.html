@@ -2,41 +2,131 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Utwórz ofertę (QR)</title>
+  <title>Offer | zk-wallet-go</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    body{font-family:system-ui, sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem}
-    button{padding:.6rem 1rem;border:1px solid #ccc;border-radius:8px;background:#fafafa;cursor:pointer}
-    #qr{margin-top:1rem}
-    pre{background:#f6f6f6;padding:1rem;white-space:pre-wrap}
-  </style>
+  <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
-  <h1>Credential Offer → QR (Dock Wallet)</h1>
-  <p>Kliknij, by utworzyć pre-authorized offer dla zalogowanego użytkownika.</p>
-  <button id="create">Utwórz ofertę</button>
-  <div id="out"></div>
-  <div id="qr"></div>
+  <div class="shell">
+    <header>
+      <div class="row nav">
+      <h1>Offer</h1>
+        <div class="nav-right">
+          <a class="btn secondary" href="/">Home</a>
+          <a class="btn secondary" href="/offer.html">Offer</a>
+          <a class="btn secondary" href="/wallet.html">Wallet</a>
+          <a class="btn secondary" href="/proof.html">Proof</a>
+          <a class="btn" id="loginBtn" href="/auth/dsnet/login">Login</a>
+          <a class="btn secondary" id="logoutBtn" href="/auth/logout" style="display:none;">Logout</a>
+        </div>
+      </div>
+    </header>
+    <main>
+      <div class="card">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <div>
+            <h2>Create a pre-authorized offer</h2>
+            <p>You must be logged in (DSNET). After creation you will see the QR, offer ID, and deeplink.</p>
+          </div>
+          <button class="btn" id="create">Create offer</button>
+        </div>
+        <div id="loginNotice" class="status error" style="display:none;margin-top:8px;">You must be logged in to generate an offer.</div>
+      </div>
+
+      <div id="qrCard" class="grid" style="display:none;">
+        <div class="card">
+          <h2>QR / Deeplink</h2>
+          <p>Scan in your wallet or copy the deeplink after creating the offer.</p>
+          <div id="qr" class="qr-wrap note">No offer yet — click "Create offer".</div>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <script type="module">
     const $ = (s)=>document.querySelector(s);
-    $('#create').onclick = async () => {
-      const r = await fetch('/oidc4vci/offer', { method:'POST', credentials:'include' });
-      if (!r.ok) { alert('Nie zalogowany? Najpierw /auth/dsnet/login.'); return; }
-      const data = await r.json();
-      $('#out').innerHTML = '<pre>'+JSON.stringify(data,null,2)+'</pre>';
-      const deeplink = encodeURIComponent(data.deeplink);
+    const qrBox = $('#qr');
+    const qrCard = $('#qrCard');
+    const loginNotice = document.getElementById('loginNotice');
+    const pre = (data) => '<pre>'+JSON.stringify(data,null,2)+'</pre>';
+
+    function copy(text, label) {
+      navigator.clipboard?.writeText(text).then(()=>{
+        alert(label+' copied to clipboard');
+      }).catch(()=>alert('Copy failed.'));
+    }
+
+    function renderQR(deeplink, offerUri) {
+      const encoded = encodeURIComponent(deeplink);
       const img = document.createElement('img');
       img.id = 'qr-img';
       img.alt = 'QR';
-      img.src = `https://quickchart.io/qr?text=${deeplink}&size=300`;
-      const link = document.createElement('p');
-      link.innerHTML = '<b>Deeplink:</b> <code>'+data.deeplink+'</code>';
-      const cont = $('#qr');
-      cont.innerHTML = '';
-      cont.appendChild(img);
-      cont.appendChild(link);
+      img.src = `https://quickchart.io/qr?text=${encoded}&size=320`;
+      qrBox.innerHTML = '';
+      qrBox.appendChild(img);
+      const idP = document.createElement('p');
+      idP.className = 'note';
+      const id = offerUri.split('/').pop();
+      idP.innerHTML = '<b>Offer ID:</b> <code>'+id+'</code>';
+      qrBox.appendChild(idP);
+      const btn = document.createElement('button');
+      btn.className = 'btn secondary';
+      btn.textContent = 'Show URL and deeplink';
+      const linkP = document.createElement('p');
+      linkP.className = 'note stacked';
+      linkP.style.display = 'none';
+      linkP.innerHTML = [
+        '<span style="display:block;"><b>Offer URL:</b></span>',
+        '<span style="display:block;"><code>'+offerUri+'</code></span>',
+        '<span style="display:block; height: 8px;"></span>',
+        '<span style="display:block;"><b>Deeplink:</b></span>',
+        '<span style="display:block;"><code>'+deeplink+'</code></span>'
+      ].join('');
+      btn.onclick = () => { 
+        const shown = linkP.style.display !== 'none';
+        linkP.style.display = shown ? 'none' : 'block';
+        btn.textContent = shown ? 'Show URL and deeplink' : 'Hide URL and deeplink';
+      };
+      qrBox.appendChild(btn);
+      qrBox.appendChild(linkP);
+      qrCard.style.display = 'grid';
+    }
+
+    async function ingestToLocalWallet(offerUri) {
+      // automatic import removed
+    }
+
+    $('#create').onclick = async () => {
+      qrBox.innerHTML = '';
+      if (qrCard) qrCard.style.display = 'none';
+      if (loginNotice) loginNotice.style.display = 'none';
+      const r = await fetch('/oidc4vci/offer', { method:'POST', credentials:'include' });
+      if (!r.ok) {
+        if (loginNotice) loginNotice.style.display = 'block';
+        return;
+      }
+      const data = await r.json();
+      renderQR(data.deeplink, data.credential_offer_uri);
     };
+
+    async function refreshSessionUI() {
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      try {
+        const res = await fetch('/auth/me', { credentials:'include' });
+        if (res.ok) {
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = 'inline-flex';
+        } else {
+          loginBtn.style.display = 'inline-flex';
+          logoutBtn.style.display = 'none';
+        }
+      } catch {
+        loginBtn.style.display = 'inline-flex';
+        logoutBtn.style.display = 'none';
+      }
+    }
+    refreshSessionUI();
   </script>
 </body>
 </html>
