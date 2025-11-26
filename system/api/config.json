@@ -16,6 +16,11 @@
                 "publisher_alias": "VerifiersUnverifiedPublisher",
                 "exchange": "verifiers",
                 "routing_key": "unverified.#"
+            },
+            {
+                "publisher_alias": "LogPublisher",
+                "exchange": "log_audit",
+                "routing_key": ""
             }
         ],
         "consumers": [
@@ -28,6 +33,11 @@
                 "consumer_alias": "ProofFailuresConsumer",
                 "consumer_tag": "api-proof-failures",
                 "queue_name": "proof.failures"
+            },
+            {
+                "consumer_alias": "LogConsumer",
+                "consumer_tag": "api-log-consumer",
+                "queue_name": "logs.api"
             }
         ]
     }
