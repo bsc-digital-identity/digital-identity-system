@@ -57,15 +57,15 @@
       "user": "id_system_api",
       "vhost": "/",
       "configure": "^$",
-      "write": "verifiers\\..*",
-      "read": "identity|proof\\.(results|failures)"
+      "write": "verifiers\\..*|log_audit",
+      "read": "identity|proof\\.(results|failures)|logs\\.api"
     },
     {
       "user": "id_system_blockchain",
       "vhost": "/",
       "configure": "^$",
-      "write": "identity",
-      "read": "verified\\.(positive|negative)"
+      "write": "identity|log_audit",
+      "read": "verified\\.(positive|negative)|logs\\.blockchain"
     }
   ],
   "exchanges": [
@@ -136,30 +136,42 @@
     {
       "name": "logs.blockchain",
       "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {}
+      "durable": false,
+      "auto_delete": true,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-expires": 3600000
+      }
     },
     {
       "name": "logs.api",
       "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {}
+      "durable": false,
+      "auto_delete": true,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-expires": 3600000
+      }
     },
     {
       "name": "logs.guest",
       "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {}
+      "durable": false,
+      "auto_delete": true,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-expires": 3600000
+      }
     },
     {
       "name": "logs.admin",
       "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {}
+      "durable": false,
+      "auto_delete": true,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-expires": 3600000
+      }
     }
   ],
   "bindings": [

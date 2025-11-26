@@ -1,7 +1,6 @@
 package database
 
 import (
-	logaudit "api/src/log_audit"
 	"api/src/model"
 	"pkg-common/logger"
 
@@ -20,7 +19,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&model.ZeroKnowledgeProof{},
 		&model.ZkpProofFailure{},
 		&model.OutboxEvent{},
-		&logaudit.LogAuditEntry{},
+		&model.LogAuditEntry{},
 	}
 
 	// Run migrations in order

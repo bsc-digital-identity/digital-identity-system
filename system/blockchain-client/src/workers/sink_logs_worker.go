@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"pkg-common/logger"
 	"pkg-common/rabbitmq"
@@ -29,13 +28,10 @@ func NewBlockchainClientLogSink() *BlockchainClientLogSink {
 		panic(fmt.Sprintf("Error when loading keys from solana: %v", err))
 	}
 
-	dedicatedLogger := logger.New().WithOutput(os.Stdout)
-
 	return &BlockchainClientLogSink{
 		RpcClient: rpc.New("http://host.docker.internal:8899"),
 		Consumer:  rabbitmq.GetConsumer(logConsumerAlias),
 		Config:    solanaConfig,
-		logger:    dedicatedLogger,
 	}
 }
 
@@ -44,24 +40,17 @@ func (lw *BlockchainClientLogSink) GetServiceName() string {
 }
 
 func (lw *BlockchainClientLogSink) StartService() {
-	lw.logger.Info("Starting Blockchain Client Log Sink service")
 
 	lw.Consumer.StartConsuming(func(d amqp.Delivery) {
 		var logMessage logger_message.LoggerMessage
 
 		if err := json.Unmarshal(d.Body, &logMessage); err != nil {
-			lw.logger.Errorf(err, "Failed to unmarshal log message")
 			return
 		}
-
-		lw.logger.Debugf("Processing log message: Level=%s, Message=%s", logMessage.Level, logMessage.Message)
 
 		if err := lw.storeLogToSolana(logMessage); err != nil {
-			lw.logger.Errorf(err, "Failed to store log message to Solana blockchain")
 			return
 		}
-
-		lw.logger.Infof("Successfully stored log message to Solana blockchain: %s", logMessage.Message)
 	})
 }
 
@@ -70,8 +59,6 @@ func (lw *BlockchainClientLogSink) storeLogToSolana(logMessage logger_message.Lo
 	if err != nil {
 		return fmt.Errorf("failed to serialize log message: %w", err)
 	}
-
-	lw.logger.Debugf("Serialized log data size: %d bytes", len(logData))
 
 	instructionData := append([]byte("LOG:"), logData...)
 
@@ -135,6 +122,6 @@ func (lw *BlockchainClientLogSink) storeLogToSolana(logMessage logger_message.Lo
 		return fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	lw.logger.Infof("Log stored to blockchain with signature: %s", transactionSignature)
+	fmt.Sprintf("Log stored to blockchain with signature: %s", transactionSignature)
 	return nil
 }
