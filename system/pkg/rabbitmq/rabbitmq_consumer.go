@@ -1,8 +1,6 @@
 package rabbitmq
 
 import (
-	"pkg-common/logger"
-	"pkg-common/utilities"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -30,7 +28,7 @@ func InitializeConsumerRegistry(conn *amqp.Connection, consumerConfig []Rabbitmq
 		for _, consumer := range consumerConfig {
 			channel, err := conn.Channel()
 			if err != nil {
-				logger.Default().Panicf(err, "Could not obtain connection for consumer")
+				rabbitmqLogger.Panicf(err, "Could not obtain connection for consumer")
 			}
 
 			ConsumerRegistry[consumer.ConsumerAlias] = NewConsumer(
@@ -65,7 +63,7 @@ func NewConsumer(ch *amqp.Channel, queueName, consumerTag string) *RabbitmqConsu
 func (rc *RabbitmqConsumer) StartConsuming(messageHandler func(amqp.Delivery)) {
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Default().Errorf(
+			rabbitmqLogger.Errorf(
 				nil,
 				"[%s] Recovered from panic for consumer: %s, %v",
 				rc.QueueName,
@@ -84,10 +82,9 @@ func (rc *RabbitmqConsumer) StartConsuming(messageHandler func(amqp.Delivery)) {
 		false,          // no-wait
 		nil,            // args
 	)
-	utilities.FailOnError(err, "Failed to register a consumer")
+	rabbitmqLogger.Error(err, "Failed to register a consumer")
 
-	consumerLogger := logger.Default()
-	consumerLogger.Infof("Waiting for messages in queue: %s", rc.QueueName)
+	rabbitmqLogger.Infof("Waiting for messages in queue: %s", rc.QueueName)
 	var waitGroup sync.WaitGroup
 
 	waitGroup.Add(1)
@@ -95,7 +92,7 @@ func (rc *RabbitmqConsumer) StartConsuming(messageHandler func(amqp.Delivery)) {
 	go func() {
 		defer waitGroup.Done()
 		for d := range msgs {
-			consumerLogger.Infof("[%s] %s", rc.QueueName, d.Body)
+			rabbitmqLogger.Infof("[%s] %s", rc.QueueName, d.Body)
 			messageHandler(d)
 		}
 	}()

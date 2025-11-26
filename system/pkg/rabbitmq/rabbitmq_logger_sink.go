@@ -1,7 +1,6 @@
 package rabbitmq
 
 import (
-	"fmt"
 	logger_message "pkg-common/utilities/logger"
 	"pkg-common/utilities/timeutil"
 
@@ -18,8 +17,7 @@ func CreateRabbitmqLoggerSink(publisher IRabbitmqPublisher) func(string, zerolog
 
 		err := publisher.Publish(loggerMessage)
 		if err != nil {
-			// Avoid infinite recursion by not using the logger here
-			fmt.Printf("Failed to publish log message to RabbitMQ: %v\n", err)
+			rabbitmqLogger.Error(err, "Failed to publish log message to RabbitMQ")
 		}
 	}
 }
