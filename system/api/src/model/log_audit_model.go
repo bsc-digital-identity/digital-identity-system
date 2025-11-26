@@ -1,4 +1,4 @@
-package logaudit
+package model
 
 import (
 	"time"

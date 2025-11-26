@@ -2,7 +2,6 @@ package logaudit
 
 import (
 	"encoding/json"
-	"os"
 
 	"pkg-common/logger"
 	"pkg-common/rabbitmq"
@@ -22,7 +21,6 @@ type LogSinkWorker struct {
 }
 
 func NewLogSinkWorker() *LogSinkWorker {
-	dedicatedLogger := logger.New().WithOutput(os.Stdout)
 
 	repository := NewLogAuditRepository()
 	service := NewLogAuditService(repository)
@@ -30,7 +28,6 @@ func NewLogSinkWorker() *LogSinkWorker {
 	return &LogSinkWorker{
 		service:  service,
 		consumer: rabbitmq.GetConsumer(rabbitmq.ConsumerAlias(logConsumerAlias)),
-		logger:   dedicatedLogger,
 	}
 }
 
@@ -39,23 +36,15 @@ func (w *LogSinkWorker) GetServiceName() string {
 }
 
 func (w *LogSinkWorker) StartService() {
-	w.logger.Info("Starting API Log Sink Worker")
-
 	w.consumer.StartConsuming(func(d amqp.Delivery) {
 		var logMessage logger_message.LoggerMessage
 
 		if err := json.Unmarshal(d.Body, &logMessage); err != nil {
-			w.logger.Errorf(err, "Failed to unmarshal log message")
 			return
 		}
-
-		w.logger.Debugf("Processing log message: Level=%s, Message=%s", logMessage.Level, logMessage.Message)
 
 		if err := w.service.ProcessLogMessage(logMessage); err != nil {
-			w.logger.Errorf(err, "Failed to save log message to database")
 			return
 		}
-
-		w.logger.Debugf("Successfully saved log message to database: %s", logMessage.Message)
 	})
 }
