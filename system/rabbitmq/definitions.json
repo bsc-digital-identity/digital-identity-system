@@ -44,7 +44,7 @@
       "vhost": "/",
       "configure": ".*",
       "write": ".*",
-      "read": ".*"
+      "read": "^logs\\.guest$"
     },
     {
       "user": "verifier_mock",
@@ -86,6 +86,15 @@
       "auto_delete": false,
       "internal": false,
       "arguments": {}
+    },
+    {
+      "name": "log_audit",
+      "vhost": "/",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
     }
   ],
   "queues": [
@@ -119,6 +128,34 @@
     },
     {
       "name": "proof.failures",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "logs.blockchain",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "logs.api",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "logs.guest",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "logs.admin",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
@@ -164,6 +201,38 @@
       "destination": "proof.failures",
       "destination_type": "queue",
       "routing_key": "proof.failures",
+      "arguments": {}
+    },
+    {
+      "source": "log_audit",
+      "vhost": "/",
+      "destination": "logs.blockchain",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "log_audit",
+      "vhost": "/",
+      "destination": "logs.api",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "log_audit",
+      "vhost": "/",
+      "destination": "logs.guest",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "log_audit",
+      "vhost": "/",
+      "destination": "logs.admin",
+      "destination_type": "queue",
+      "routing_key": "",
       "arguments": {}
     }
   ]
