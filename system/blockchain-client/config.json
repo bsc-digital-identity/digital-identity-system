@@ -18,6 +18,11 @@
                 "publisher_alias": "IdentityFailurePublisher",
                 "exchange": "identity",
                 "routing_key": "proof.failures"
+            },
+            {
+                "publisher_alias": "LogPublisher",
+                "exchange": "log_audit",
+                "routing_key": ""
             }
         ],
         "consumers": [
@@ -30,6 +35,11 @@
                 "consumer_alias": "VerifiedNegativeConsumer",
                 "consumer_tag": "blockchain-verified-negative",
                 "queue_name": "verified.negative"
+            },
+            {
+                "consumer_alias": "LogConsumer",
+                "consumer_tag": "blockchain-log-consumer",
+                "queue_name": "logs.blockchain"
             }
         ]
     }

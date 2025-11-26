@@ -6,6 +6,7 @@ import (
 	"fmt"
 	appbuilder "pkg-common/app_builder"
 	"pkg-common/logger"
+	"pkg-common/rabbitmq"
 	"pkg-common/rest"
 	"pkg-common/utilities"
 
@@ -27,9 +28,17 @@ func main() {
 		LoadConfig("config.json").
 		InitRabbitmqConnection().
 		InitRabbitmqRegistries().
+		WithOption(func(a *appbuilder.AppBuilder[BlockchainClientConfigJson, BlockchainClientConfig]) {
+			// ----- RABBITMQ LOGGING SINK -----
+			logPublisher := rabbitmq.GetPublisher("LogPublisher")
+			loggerInstance := logger.Default()
+			logSink := rabbitmq.CreateRabbitmqLoggerSink(logPublisher)
+			logger.AddSinkToLoggerInstance(loggerInstance, logSink)
+		}).
 		AddWorkerServices(
 			workers.NewVerifiedPositiveWorker(),
 			workers.NewVerifiedNegativeWorker(),
+			workers.NewBlockchainClientLogSink(),
 		).
 		AddGinMiddleware(
 			rest.NewMiddleware("*", rest.InternalAuthMiddleware()),
