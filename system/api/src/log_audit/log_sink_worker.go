@@ -28,6 +28,7 @@ func NewLogSinkWorker() *LogSinkWorker {
 	return &LogSinkWorker{
 		service:  service,
 		consumer: rabbitmq.GetConsumer(rabbitmq.ConsumerAlias(logConsumerAlias)),
+		logger:   logger.New(),
 	}
 }
 

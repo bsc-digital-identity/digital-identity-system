@@ -32,6 +32,7 @@ func NewBlockchainClientLogSink() *BlockchainClientLogSink {
 		RpcClient: rpc.New("http://host.docker.internal:8899"),
 		Consumer:  rabbitmq.GetConsumer(logConsumerAlias),
 		Config:    solanaConfig,
+		logger:    logger.New(),
 	}
 }
 
