@@ -44,7 +44,7 @@
       "vhost": "/",
       "configure": ".*",
       "write": ".*",
-      "read": ".*"
+      "read": "^logs\\.guest$"
     },
     {
       "user": "verifier_mock",
@@ -57,15 +57,15 @@
       "user": "id_system_api",
       "vhost": "/",
       "configure": "^$",
-      "write": "verifiers\\..*",
-      "read": "identity|proof\\.(results|failures)"
+      "write": "verifiers\\..*|log_audit",
+      "read": "identity|proof\\.(results|failures)|logs\\.api"
     },
     {
       "user": "id_system_blockchain",
       "vhost": "/",
       "configure": "^$",
-      "write": "identity",
-      "read": "verified\\.(positive|negative)"
+      "write": "identity|log_audit",
+      "read": "verified\\.(positive|negative)|logs\\.blockchain"
     }
   ],
   "exchanges": [
@@ -82,6 +82,15 @@
       "name": "identity",
       "vhost": "/",
       "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "log_audit",
+      "vhost": "/",
+      "type": "fanout",
       "durable": true,
       "auto_delete": false,
       "internal": false,
@@ -123,6 +132,46 @@
       "durable": true,
       "auto_delete": false,
       "arguments": {}
+    },
+    {
+      "name": "logs.blockchain",
+      "vhost": "/",
+      "durable": false,
+      "auto_delete": true,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-expires": 3600000
+      }
+    },
+    {
+      "name": "logs.api",
+      "vhost": "/",
+      "durable": false,
+      "auto_delete": true,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-expires": 3600000
+      }
+    },
+    {
+      "name": "logs.guest",
+      "vhost": "/",
+      "durable": false,
+      "auto_delete": true,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-expires": 3600000
+      }
+    },
+    {
+      "name": "logs.admin",
+      "vhost": "/",
+      "durable": false,
+      "auto_delete": true,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-expires": 3600000
+      }
     }
   ],
   "bindings": [
@@ -164,6 +213,38 @@
       "destination": "proof.failures",
       "destination_type": "queue",
       "routing_key": "proof.failures",
+      "arguments": {}
+    },
+    {
+      "source": "log_audit",
+      "vhost": "/",
+      "destination": "logs.blockchain",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "log_audit",
+      "vhost": "/",
+      "destination": "logs.api",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "log_audit",
+      "vhost": "/",
+      "destination": "logs.guest",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "log_audit",
+      "vhost": "/",
+      "destination": "logs.admin",
+      "destination_type": "queue",
+      "routing_key": "",
       "arguments": {}
     }
   ]

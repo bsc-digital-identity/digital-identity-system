@@ -19,6 +19,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&model.ZeroKnowledgeProof{},
 		&model.ZkpProofFailure{},
 		&model.OutboxEvent{},
+		&model.LogAuditEntry{},
 	}
 
 	// Run migrations in order
