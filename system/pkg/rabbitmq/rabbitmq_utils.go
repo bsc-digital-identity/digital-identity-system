@@ -29,3 +29,5 @@ func ConnectToRabbitmq(user, password string) (*amqp.Connection, error) {
 	}
 	return nil, err
 }
+
+var rabbitmqLogger = logger.New()

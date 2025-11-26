@@ -1,7 +1,6 @@
 package rabbitmq
 
 import (
-	"pkg-common/logger"
 	"pkg-common/utilities"
 	"sync"
 	"time"
@@ -31,7 +30,7 @@ func InitializePublisherRegistry(conn *amqp.Connection, publisherConfig []Rabbit
 		for _, publisher := range publisherConfig {
 			channel, err := conn.Channel()
 			if err != nil {
-				logger.Default().Panicf(err, "Could not obtain connection for publisher")
+				rabbitmqLogger.Panicf(err, "Could not obtain connection for publisher")
 			}
 
 			PublisherRegistry[publisher.PublisherAlias] = NewPublisher(
