@@ -1,12 +1,18 @@
 package zkp
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"math"
+	"math/big"
+	"strings"
 	"time"
 
 	"github.com/consensys/gnark/frontend"
 )
+
+// ------------------------------------------------------------------
 
 type DynamicCircuit struct {
 	SecretValues []frontend.Variable `gnark:",secret"`
@@ -66,6 +72,11 @@ func (dc *DynamicCircuit) Clone() *DynamicCircuit {
 	return clone
 }
 
+func hashStringToFieldElement(s string) *big.Int {
+	h := sha256.Sum256([]byte(s))
+	return new(big.Int).SetBytes(h[:])
+}
+
 func (dc *DynamicCircuit) AssignValues(values map[string]interface{}) error {
 	assigned := make(map[string]struct{}, len(values))
 
@@ -75,9 +86,35 @@ func (dc *DynamicCircuit) AssignValues(values map[string]interface{}) error {
 			return fmt.Errorf("assignment references unknown field '%s'", name)
 		}
 
-		variable, err := convertToVariable(field, rawValue)
-		if err != nil {
-			return fmt.Errorf("invalid value for field '%s': %w", name, err)
+		var variable frontend.Variable
+
+		// POPRAWKA: Bardziej elastyczne sprawdzanie czy pole jest stringiem.
+		// Rzutujemy field.Type na string, aby strings.EqualFold zadziałało poprawnie.
+		isString := strings.EqualFold(string(field.Type), "string") || field.Type == FieldTypeString
+
+		if isString {
+			// CRITICAL FIX: Check if the input is ACTUALLY a string before hashing.
+			// If the upstream service passed a number (or BigInt) for a string field,
+			// treating it as a string ("12345...") and hashing it results in Double Hashing.
+			if strVal, ok := rawValue.(string); ok {
+				fmt.Printf("DEBUG: AssignValues hashing string field '%s': '%s'\n", name, strVal)
+				variable = hashStringToFieldElement(strVal)
+			} else {
+				// Fallback: The input is not a string (e.g. it's a big.Int or number).
+				// Assume it is already a field element/hash provided by the caller.
+				fmt.Printf("DEBUG: AssignValues received non-string for string field '%s', treating as number: %v\n", name, rawValue)
+				var err error
+				variable, err = convertToVariable(field, rawValue)
+				if err != nil {
+					return fmt.Errorf("invalid numeric value for string field '%s': %w", name, err)
+				}
+			}
+		} else {
+			var err error
+			variable, err = convertToVariable(field, rawValue)
+			if err != nil {
+				return fmt.Errorf("invalid value for field '%s': %w", name, err)
+			}
 		}
 
 		if idx, ok := dc.secretIndex[name]; ok {
@@ -157,6 +194,9 @@ func (dc *DynamicCircuit) applyRangeConstraint(api frontend.API, constraint Cons
 }
 
 func (dc *DynamicCircuit) applyComparisonConstraint(api frontend.API, constraint ConstraintDefinition) error {
+	// DEBUG LOG: Pozwala upewnić się, że Constraint widzi wartość "AGH"
+	fmt.Printf("DEBUG: Sprawdzam constraint. Value raw: %s\n", constraint.Value)
+
 	if len(constraint.Fields) == 0 {
 		return fmt.Errorf("comparison constraint must declare at least one field")
 	}
@@ -167,17 +207,32 @@ func (dc *DynamicCircuit) applyComparisonConstraint(api frontend.API, constraint
 	}
 
 	var right frontend.Variable
+	// Check if we are comparing two fields or one field against a constant value
 	if len(constraint.Fields) > 1 {
+		// Case 1: Comparing two circuit variables (e.g., fieldA == fieldB)
 		right, err = dc.fieldVariable(constraint.Fields[1])
 		if err != nil {
 			return err
 		}
 	} else {
-		number, err := constraint.ValueAsInt()
-		if err != nil {
-			return err
+		// Case 2: Comparing a circuit variable against a constant value from the schema
+		// The value is stored as json.RawMessage.
+
+		var strVal string
+		// Attempt to unmarshal the raw JSON value as a string.
+		// This ensures that "AGH" (string) is treated differently than 123 (number).
+		if err := json.Unmarshal(constraint.Value, &strVal); err == nil {
+			// SUKCES: To jest string. Haszujemy go.
+			// To musi pasować do logiki w AssignValues!
+			right = hashStringToFieldElement(strVal)
+		} else {
+			// FALLBACK: To nie jest string, więc zakładamy liczbę.
+			number, err := constraint.ValueAsInt()
+			if err != nil {
+				return fmt.Errorf("constraint value is neither a valid string nor a number: %w", err)
+			}
+			right = number
 		}
-		right = number
 	}
 
 	switch constraint.Operator {
@@ -201,103 +256,26 @@ func (dc *DynamicCircuit) applyComparisonConstraint(api frontend.API, constraint
 }
 
 func (dc *DynamicCircuit) applyAgeConstraint(api frontend.API, constraint ConstraintDefinition) error {
-	minAge, err := constraint.ValueAsInt()
+	if len(constraint.Fields) != 1 {
+		return fmt.Errorf("age constraint expects one field (birthdate timestamp)")
+	}
+
+	minAgeYears, err := constraint.ValueAsInt()
 	if err != nil {
 		return err
 	}
 
-	var (
-		birthYear, birthMonth, birthDay frontend.Variable
-		currYear, currMonth, currDay    frontend.Variable
-	)
+	const secondsPerYear = int64(365 * 24 * 60 * 60)
 
-	switch len(constraint.Fields) {
-	case 3:
-		// Legacy mode: only birth_* provided; falls back to "now" (not ideal)
-		// NOTE: Better to avoid this path in production.
-		by, err := dc.fieldVariable(constraint.Fields[0])
-		if err != nil {
-			return err
-		}
-		bm, err := dc.fieldVariable(constraint.Fields[1])
-		if err != nil {
-			return err
-		}
-		bd, err := dc.fieldVariable(constraint.Fields[2])
-		if err != nil {
-			return err
-		}
-
-		// Using host time makes proofs non-replayable deterministically; keep for back-compat only.
-		now := time.Now().UTC()
-		birthYear, birthMonth, birthDay = by, bm, bd
-		currYear = frontend.Variable(now.Year())
-		currMonth = frontend.Variable(int(now.Month()))
-		currDay = frontend.Variable(now.Day())
-
-	case 6:
-		// Preferred mode: birth_* then current_* (public)
-		var err error
-		birthYear, err = dc.fieldVariable(constraint.Fields[0])
-		if err != nil {
-			return err
-		}
-		birthMonth, err = dc.fieldVariable(constraint.Fields[1])
-		if err != nil {
-			return err
-		}
-		birthDay, err = dc.fieldVariable(constraint.Fields[2])
-		if err != nil {
-			return err
-		}
-
-		currYear, err = dc.fieldVariable(constraint.Fields[3])
-		if err != nil {
-			return err
-		}
-		currMonth, err = dc.fieldVariable(constraint.Fields[4])
-		if err != nil {
-			return err
-		}
-		currDay, err = dc.fieldVariable(constraint.Fields[5])
-		if err != nil {
-			return err
-		}
-
-	default:
-		return fmt.Errorf("age constraint expects 3 (birth_*) or 6 (birth_* + current_*) fields, got %d", len(constraint.Fields))
+	birthTsVar, err := dc.fieldVariable(constraint.Fields[0])
+	if err != nil {
+		return err
 	}
 
-	// Basic sanity on month/day ranges (you already also have range_check constraints)
-	api.AssertIsLessOrEqual(1, birthMonth)
-	api.AssertIsLessOrEqual(birthMonth, 12)
-	api.AssertIsLessOrEqual(1, birthDay)
-	api.AssertIsLessOrEqual(birthDay, 31)
+	now := time.Now().Unix()
+	minBirthTs := now - int64(minAgeYears)*secondsPerYear
 
-	api.AssertIsLessOrEqual(1, currMonth)
-	api.AssertIsLessOrEqual(currMonth, 12)
-	api.AssertIsLessOrEqual(1, currDay)
-	api.AssertIsLessOrEqual(currDay, 31)
-
-	// Compute minimum valid year = current_year - minAge
-	minValidYear := api.Sub(currYear, minAge)
-
-	// birth_year <= minValidYear
-	api.AssertIsLessOrEqual(birthYear, minValidYear)
-
-	// If birth_year == minValidYear, then birth_month <= current_month
-	yearIsMin := api.IsZero(api.Sub(birthYear, minValidYear))
-	api.AssertIsLessOrEqual(
-		birthMonth,
-		api.Select(yearIsMin, currMonth, 12),
-	)
-
-	// If also birth_month == current_month (and yearIsMin), then birth_day <= current_day
-	monthIsCurr := api.IsZero(api.Sub(birthMonth, currMonth))
-	api.AssertIsLessOrEqual(
-		birthDay,
-		api.Select(api.And(yearIsMin, monthIsCurr), currDay, 31),
-	)
+	api.AssertIsLessOrEqual(birthTsVar, frontend.Variable(minBirthTs))
 
 	return nil
 }

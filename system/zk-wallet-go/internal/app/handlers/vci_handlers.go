@@ -206,8 +206,9 @@ func HandleVciCredential(w http.ResponseWriter, r *http.Request) {
 			"issuer":       config.IssuerBaseURL,
 			"issuanceDate": now.Format(time.RFC3339),
 			"credentialSubject": map[string]any{
-				"id":       rec.User.Sub,
-				"birth_ts": birthTS,
+				"id":         rec.User.Sub,
+				"birth_ts":   birthTS,
+				"university": "AGH",
 			},
 		},
 	}
