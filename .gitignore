@@ -5,3 +5,4 @@
 system/blockchain-client/.gocache/
 system/blockchain-client/test-ledger/
 test-ledger/
+.DS_Store
