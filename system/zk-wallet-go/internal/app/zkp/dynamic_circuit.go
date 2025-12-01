@@ -1,13 +1,16 @@
-// dynamic_circuit.go
 package zkp
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/consensys/gnark/frontend"
 )
+
+// ------------------------------------------------------------------
 
 type DynamicCircuit struct {
 	SecretValues []frontend.Variable `gnark:",secret"`
@@ -76,9 +79,35 @@ func (dc *DynamicCircuit) AssignValues(values map[string]interface{}) error {
 			return fmt.Errorf("assignment references unknown field '%s'", name)
 		}
 
-		variable, err := convertToVariable(field, rawValue)
-		if err != nil {
-			return fmt.Errorf("invalid value for field '%s': %w", name, err)
+		var variable frontend.Variable
+
+		// POPRAWKA: Bardziej elastyczne sprawdzanie czy pole jest stringiem.
+		// Rzutujemy field.Type na string, aby strings.EqualFold zadziałało poprawnie.
+		isString := strings.EqualFold(string(field.Type), "string") || field.Type == FieldTypeString
+
+		if isString {
+			// CRITICAL FIX: Check if the input is ACTUALLY a string before hashing.
+			// If the upstream service passed a number (or BigInt) for a string field,
+			// treating it as a string ("12345...") and hashing it results in Double Hashing.
+			if strVal, ok := rawValue.(string); ok {
+				fmt.Printf("DEBUG: AssignValues hashing string field '%s': '%s'\n", name, strVal)
+				variable = hashStringToFieldElement(strVal)
+			} else {
+				// Fallback: The input is not a string (e.g. it's a big.Int or number).
+				// Assume it is already a field element/hash provided by the caller.
+				fmt.Printf("DEBUG: AssignValues received non-string for string field '%s', treating as number: %v\n", name, rawValue)
+				var err error
+				variable, err = convertToVariable(field, rawValue)
+				if err != nil {
+					return fmt.Errorf("invalid numeric value for string field '%s': %w", name, err)
+				}
+			}
+		} else {
+			var err error
+			variable, err = convertToVariable(field, rawValue)
+			if err != nil {
+				return fmt.Errorf("invalid value for field '%s': %w", name, err)
+			}
 		}
 
 		if idx, ok := dc.secretIndex[name]; ok {
@@ -158,6 +187,9 @@ func (dc *DynamicCircuit) applyRangeConstraint(api frontend.API, constraint Cons
 }
 
 func (dc *DynamicCircuit) applyComparisonConstraint(api frontend.API, constraint ConstraintDefinition) error {
+	// DEBUG LOG: Pozwala upewnić się, że Constraint widzi wartość "AGH"
+	fmt.Printf("DEBUG: Sprawdzam constraint. Value raw: %s\n", constraint.Value)
+
 	if len(constraint.Fields) == 0 {
 		return fmt.Errorf("comparison constraint must declare at least one field")
 	}
@@ -168,17 +200,32 @@ func (dc *DynamicCircuit) applyComparisonConstraint(api frontend.API, constraint
 	}
 
 	var right frontend.Variable
+	// Check if we are comparing two fields or one field against a constant value
 	if len(constraint.Fields) > 1 {
+		// Case 1: Comparing two circuit variables (e.g., fieldA == fieldB)
 		right, err = dc.fieldVariable(constraint.Fields[1])
 		if err != nil {
 			return err
 		}
 	} else {
-		number, err := constraint.ValueAsInt()
-		if err != nil {
-			return err
+		// Case 2: Comparing a circuit variable against a constant value from the schema
+		// The value is stored as json.RawMessage.
+
+		var strVal string
+		// Attempt to unmarshal the raw JSON value as a string.
+		// This ensures that "AGH" (string) is treated differently than 123 (number).
+		if err := json.Unmarshal(constraint.Value, &strVal); err == nil {
+			// SUKCES: To jest string. Haszujemy go.
+			// To musi pasować do logiki w AssignValues!
+			right = hashStringToFieldElement(strVal)
+		} else {
+			// FALLBACK: To nie jest string, więc zakładamy liczbę.
+			number, err := constraint.ValueAsInt()
+			if err != nil {
+				return fmt.Errorf("constraint value is neither a valid string nor a number: %w", err)
+			}
+			right = number
 		}
-		right = number
 	}
 
 	switch constraint.Operator {
@@ -202,9 +249,6 @@ func (dc *DynamicCircuit) applyComparisonConstraint(api frontend.API, constraint
 }
 
 func (dc *DynamicCircuit) applyAgeConstraint(api frontend.API, constraint ConstraintDefinition) error {
-	// Nowa semantyka:
-	// - constraint.Fields[0] = birthdate (UNIX timestamp w sekundach)
-	// - constraint.Value = minimalny wiek w latach (int)
 	if len(constraint.Fields) != 1 {
 		return fmt.Errorf("age constraint expects one field (birthdate timestamp)")
 	}
@@ -214,7 +258,6 @@ func (dc *DynamicCircuit) applyAgeConstraint(api frontend.API, constraint Constr
 		return err
 	}
 
-	// Sekundy na rok – przybliżenie, na MVP wystarczy
 	const secondsPerYear = int64(365 * 24 * 60 * 60)
 
 	birthTsVar, err := dc.fieldVariable(constraint.Fields[0])
@@ -225,12 +268,7 @@ func (dc *DynamicCircuit) applyAgeConstraint(api frontend.API, constraint Constr
 	now := time.Now().Unix()
 	minBirthTs := now - int64(minAgeYears)*secondsPerYear
 
-	// birthdate <= now - minAge → jesteś co najmniej minAge lat
 	api.AssertIsLessOrEqual(birthTsVar, frontend.Variable(minBirthTs))
-
-	// Opcjonalnie: sanity check zakresu birthdate (np. > 1900 roku itd.)
-	// minValidTs := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-	// api.AssertIsLessOrEqual(frontend.Variable(minValidTs), birthTsVar)
 
 	return nil
 }
