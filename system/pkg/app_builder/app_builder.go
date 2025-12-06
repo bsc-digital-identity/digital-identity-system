@@ -27,6 +27,13 @@ type AppBuilder[T utilities.JsonConfigObj[U], U AppConfig] struct {
 	routes         []rest.Route
 	middleware     []rest.Middleware
 	engine         *gin.Engine
+
+	ServeTemplates bool
+	TemplatesGlob  string
+
+	ServeCSS    bool
+	CSSRoute    string
+	CSSFilePath string
 }
 
 type AppBuilderInterface[T utilities.JsonConfigObj[U], U AppConfig] interface {
@@ -140,6 +147,24 @@ func (a *AppBuilder[T, U]) AddSwagger() AppBuilderInterface[T, U] {
 func (a *AppBuilder[T, U]) InitGinRouter() AppBuilderInterface[T, U] {
 	a.Logger.Info("Initializing Gin Router...")
 	router := gin.Default()
+
+	if a.ServeCSS && a.CSSRoute != "" && a.CSSFilePath != "" {
+		a.Logger.Infof("Serving CSS: %s -> %s", a.CSSRoute, a.CSSFilePath)
+		router.StaticFile(a.CSSRoute, a.CSSFilePath)
+	} else {
+		a.Logger.Info("CSS serving disabled or not configured – skipping StaticFile")
+	}
+
+	if a.ServeTemplates {
+		glob := a.TemplatesGlob
+		if glob == "" {
+			glob = "templates/*.html"
+		}
+		a.Logger.Infof("Loading HTML templates from glob: %s", glob)
+		router.LoadHTMLGlob(glob)
+	} else {
+		a.Logger.Info("HTML templates disabled – skipping LoadHTMLGlob")
+	}
 
 	groups := map[string]*gin.RouterGroup{}
 

@@ -25,6 +25,9 @@ COPY --from=builder /app/api .
 
 COPY api/config.json ./config.json
 
+COPY api/templates ./templates
+COPY api/static    ./static
+
 EXPOSE 8080
 
 CMD ["./api"]
