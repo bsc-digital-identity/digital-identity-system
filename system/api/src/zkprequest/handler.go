@@ -337,28 +337,6 @@ func (h *Handler) Result(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"state": "pending"})
 }
 
-// --- DEV ONLY ---
-// POST /v1/presentations/mock-verify
-type mockVerifyIn struct {
-	RequestID string `json:"request_id" binding:"required"`
-}
-
-func (h *Handler) MockVerify(c *gin.Context) {
-	var in mockVerifyIn
-	if err := c.ShouldBindJSON(&in); err != nil {
-		h.log.Warn("mock_verify.bad_json", "error", err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad json: " + err.Error()})
-		return
-	}
-	if _, err := h.svc.MockVerify(in.RequestID); err != nil {
-		h.log.Warn("mock_verify.failed", "request_id", in.RequestID, "error", err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": err.Error()})
-		return
-	}
-	h.log.Info("mock_verify.ok", "request_id", in.RequestID)
-	c.JSON(http.StatusOK, gin.H{"ok": true})
-}
-
 // POST /v1/presentations/verify-blocking
 type verifyBlockingIn struct {
 	SchemaJSON  string `json:"schema_json" binding:"required"`
