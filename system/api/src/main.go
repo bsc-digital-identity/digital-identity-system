@@ -85,7 +85,7 @@ func main() {
 
 		// ----- CORS (ONE GOOD MIDDLEWARE) -----
 		AddGinMiddleware(
-			rest.NewMiddleware("v1", middleware.CORSMiddleware()),
+			rest.NewMiddleware("*", middleware.CORSMiddleware()),
 			rest.NewMiddleware("v1/internal", rest.InternalAuthMiddleware()),
 		).
 
@@ -97,6 +97,7 @@ func main() {
 
 			// ZKP Presentation Request
 			rest.NewRoute(rest.POST, "v1", "presentations/create", zkpHandler.CreatePresentation),
+
 			rest.NewRoute(rest.POST, "v1", "presentations/verify", zkpHandler.VerifyPresentation),
 			rest.NewRoute(rest.GET, "v1", "presentations/:request_id", zkpHandler.ShowPresentation),
 			rest.NewRoute(rest.GET, "v1", "presentations/:request_id/descriptor", zkpHandler.Descriptor),
@@ -114,7 +115,6 @@ func main() {
 			rest.NewRoute(rest.GET, "v1", "logs/level/:level", logAuditHandler.GetLogEntriesByLevel),
 
 			// DEV ONLY:
-			rest.NewRoute(rest.POST, "v1", "presentations/mock-verify", zkpHandler.MockVerify),
 			rest.NewRoute(rest.POST, "v1", "presentations/verify-blocking", zkpHandler.VerifyBlocking),
 		).
 		AddSwagger().

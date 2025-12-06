@@ -1,24 +1,15 @@
 package middleware
 
 import (
-	"fmt"
-	"net/http"
-	"pkg-common/utilities"
-
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
-
-func PublicAuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// tutaj docelowo np. auth na podstawie nagłówków,
-		c.Next()
-	}
-}
 
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// DEV: konkretny frontend (wallet) – lepiej niż "*"
-		origin := fmt.Sprintf("http://%s:8081", utilities.ResolveLanHost())
+		origin := c.Request.Header.Get("Origin")
+
+		println("[CORS]", c.Request.Method, c.Request.URL.Path, "Origin:", origin)
 
 		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
