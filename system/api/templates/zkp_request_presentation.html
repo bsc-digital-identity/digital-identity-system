@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Verification | zk-wallet-go</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+<div class="shell slim">
+    <header>
+        <div class="row nav">
+            <div>
+                <h1>Verification request</h1>
+                <p class="sub">Use your zk wallet to prove the required attributes.</p>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="card">
+            <h2>Scan to verify</h2>
+            <p>This page belongs to a relying party that wants to verify your identity.</p>
+        </div>
+
+        <div class="card">
+            <h2>Wallet QR</h2>
+            <p>Open your wallet app and scan this code.</p>
+
+            <div class="qr-wrap">
+                <!-- TU ZMIANA: używamy QuickChart URL -->
+                <img src="{{ .QRURL }}" alt="Verification QR" width="260" height="260" />
+
+                <div style="text-align:center; margin-top:18px;">
+                    <p class="note" style="margin-bottom:6px;">Or paste this Request ID into your wallet:</p>
+                    <div style="
+                        font-size:1.15rem;
+                        font-weight:700;
+                        padding:10px 16px;
+                        border-radius:12px;
+                        background: rgba(255,255,255,0.05);
+                        border: 1px solid var(--border);
+                        display:inline-block;
+                        word-break:break-all;
+                    ">
+                        {{ .RequestID }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

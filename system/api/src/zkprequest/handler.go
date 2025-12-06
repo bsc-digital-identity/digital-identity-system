@@ -100,9 +100,9 @@ func (h *Handler) CreatePresentation(c *gin.Context) {
 
 	c.JSON(http.StatusOK, CreatePresentationOut{
 		Request:     req,
-		RequestURL:  requestURL,              // strona HTML (dla ludzi)
-		DeepLink:    deeplink,                // opcjonalny
-		QRPngBase64: qrBase64(descriptorURL), // QR prowadzi do DESCRIPTOR (HTTP/S)
+		RequestURL:  requestURL,
+		DeepLink:    deeplink,
+		QRPngBase64: qrBase64(descriptorURL),
 	})
 }
 
@@ -143,7 +143,6 @@ func (h *Handler) VerifyPresentation(c *gin.Context) {
 }
 
 // GET /v1/presentations/:request_id
-// Content negotiation: JSON (descriptor) gdy Accept: application/json lub ?format=json; inaczej HTML z QR
 func (h *Handler) ShowPresentation(c *gin.Context) {
 	requestID := c.Param("request_id")
 	req, ok := h.svc.Store.Load(requestID)
@@ -156,40 +155,24 @@ func (h *Handler) ShowPresentation(c *gin.Context) {
 		return
 	}
 
-	// HTML dla ludzi — QR = descriptorURL; link główny = ścieżka względna; deeplink jako fallback
 	humanURL, descriptorURL, deeplink := makeWalletLink(h.svc.Audience, requestID)
-	qr := qrBase64(descriptorURL)
 
-	// <<< NEW: relative path just for the browser link >>>
-	descriptorPath := fmt.Sprintf("/v1/presentations/%s/descriptor", requestID)
+	qrURL := "https://quickchart.io/qr?text=" +
+		url.QueryEscape(descriptorURL) +
+		"&size=320"
 
 	h.log.Info("show_presentation.render",
 		"request_id", requestID,
 		"audience", h.svc.Audience,
 		"deeplink_len", len(deeplink),
+		"qr_url", qrURL,
 	)
 
-	html := fmt.Sprintf(`<!doctype html>
-		<html>
-		  <body style="font-family:Inter,system-ui,sans-serif;text-align:center;line-height:1.4">
-			<h2>Verify your identity</h2>
-			<p>Scan this QR with your wallet app:</p>
-			<img src="data:image/png;base64,%s" width="220" height="220" alt="QR"/>
-			<div style="margin:16px 0">
-			  <a href="%s">Open verification descriptor</a>
-			</div>
-			<div style="margin:8px 0;color:#666;font-size:12px">
-			  Wallet deep link (if supported): <a href="%s">zkwallet://</a>
-			</div>
-			<code style="display:block;margin-top:12px;font-size:12px;color:#666">%s</code>
-		  </body>
-		</html>`,
-		qr,
-		descriptorPath, // <<< tu był descriptorURL
-		deeplink,
-		humanURL,
-	)
-	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+	c.HTML(http.StatusOK, "zkp_request_presentation.html", gin.H{
+		"RequestID": requestID,
+		"HumanURL":  humanURL,
+		"QRURL":     qrURL,
+	})
 }
 
 // GET /v1/presentations/:request_id/descriptor

@@ -63,6 +63,14 @@ func main() {
 			logAuditRepo := logaudit.NewLogAuditRepository()
 			logAuditService := logaudit.NewLogAuditService(logAuditRepo)
 			logAuditHandler = logaudit.NewLogAuditHandler(logAuditService)
+
+			// ----- FRONT (CSS + HTML TEMPLATE) TYLKO DLA identity-api -----
+			a.ServeTemplates = true
+			a.TemplatesGlob = "templates/*.html" // zkp_request_presentation.html
+
+			a.ServeCSS = true
+			a.CSSRoute = "/app.css"
+			a.CSSFilePath = "./static/app.css"
 		}).
 
 		// ----- RABBITMQ -----
